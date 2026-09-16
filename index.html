@@ -736,8 +736,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "1.4";
+  const APP_VERSION = "1.5";
   const CHANGELOG = [
+    {
+      version: "1.5", date: "16/09/2026",
+      changes: [
+        "Nouveau graphique « Évolution d'un joueur » dans le tableau de bord : courbe de progression des scores séance après séance, avec repère du dernier score et indicateur de progression (+/- points depuis la 1ère séance)."
+      ]
+    },
     {
       version: "1.4", date: "16/09/2026",
       changes: [
@@ -1356,6 +1362,109 @@
       selectEl.addEventListener("change", function(){ renderPlayerChart(this.value); });
       renderPlayerChart(selectEl.value);
     }
+  }
+
+  function frDateShort(iso){
+    if(!iso) return "";
+    const parts = iso.split("-");
+    if(parts.length !== 3) return iso;
+    return parts[2] + "/" + parts[1];
+  }
+
+  function renderPlayerChart(key){
+    const wrap = document.getElementById("jgPlayerChartWrap");
+    if(!wrap) return;
+
+    const entry = dashboardHistories.get(key);
+    if(!entry || !entry.history.length){
+      wrap.innerHTML = '<div class="jg-player-chart-empty">Aucun score saisi pour ce joueur.</div>';
+      return;
+    }
+
+    const hist = entry.history.slice().sort(function(a, b){ return a.date.localeCompare(b.date); });
+    const n = hist.length;
+
+    if(n === 1){
+      wrap.innerHTML = '<div class="jg-player-chart-empty">' +
+        escapeHtml(entry.display) + ' n\'a qu\'une seule séance notée (score : ' + hist[0].score + ' le ' + frDate(hist[0].date) + ').<br>' +
+        'Encore au moins une séance sera nécessaire pour tracer une courbe.' +
+      '</div>';
+      return;
+    }
+
+    const scores = hist.map(function(h){ return h.score; });
+    const minScore = Math.min.apply(null, scores);
+    const maxScore = Math.max.apply(null, scores);
+    const pad = Math.max(2, (maxScore - minScore) * 0.15);
+    const yMin = Math.max(0, Math.floor(minScore - pad));
+    const yMax = Math.ceil(maxScore + pad) > yMin ? Math.ceil(maxScore + pad) : yMin + 10;
+
+    const W = 640, H = 210;
+    const marginL = 32, marginR = 14, marginT = 16, marginB = 26;
+    const plotW = W - marginL - marginR;
+    const plotH = H - marginT - marginB;
+
+    const xFor = function(i){ return marginL + (plotW * i / (n - 1)); };
+    const yFor = function(v){ return marginT + plotH - ((v - yMin) / (yMax - yMin)) * plotH; };
+
+    const points = hist.map(function(h, i){ return { x: xFor(i), y: yFor(h.score), date: h.date, score: h.score }; });
+
+    const pathD = points.map(function(p, i){
+      return (i === 0 ? "M" : "L") + p.x.toFixed(1) + "," + p.y.toFixed(1);
+    }).join(" ");
+    const areaD = pathD +
+      " L" + points[n - 1].x.toFixed(1) + "," + (marginT + plotH).toFixed(1) +
+      " L" + points[0].x.toFixed(1) + "," + (marginT + plotH).toFixed(1) + " Z";
+
+    const gridCount = 4;
+    let gridLines = "";
+    let yLabels = "";
+    for(let g = 0; g <= gridCount; g++){
+      const val = yMin + (yMax - yMin) * g / gridCount;
+      const y = yFor(val);
+      gridLines += '<line x1="' + marginL + '" y1="' + y.toFixed(1) + '" x2="' + (W - marginR) + '" y2="' + y.toFixed(1) + '" stroke="#e1ddd2" stroke-width="1" />';
+      yLabels += '<text x="' + (marginL - 6) + '" y="' + (y + 3).toFixed(1) + '" text-anchor="end" font-size="9" fill="#a89b70">' + Math.round(val) + '</text>';
+    }
+
+    const showEvery = n <= 6 ? 1 : Math.ceil(n / 6);
+    let xLabels = "";
+    points.forEach(function(p, i){
+      if(i % showEvery === 0 || i === n - 1){
+        xLabels += '<text x="' + p.x.toFixed(1) + '" y="' + (H - marginB + 14) + '" text-anchor="middle" font-size="9" fill="#a89b70">' + escapeHtml(frDateShort(p.date)) + '</text>';
+      }
+    });
+
+    const dots = points.map(function(p, i){
+      const isLast = i === n - 1;
+      const r = isLast ? 4.5 : 3.5;
+      const fill = isLast ? "#c9971f" : "#0d2149";
+      return '<circle cx="' + p.x.toFixed(1) + '" cy="' + p.y.toFixed(1) + '" r="' + r + '" fill="' + fill + '" stroke="#fff" stroke-width="1.5">' +
+        '<title>' + escapeHtml(frDate(p.date)) + ' — Score : ' + p.score + '</title>' +
+      '</circle>';
+    }).join("");
+
+    const first = hist[0].score;
+    const last = hist[n - 1].score;
+    const delta = last - first;
+    const deltaLabel = (delta > 0 ? "+" : "") + (Number.isInteger(delta) ? delta : delta.toFixed(1));
+    const deltaColor = delta > 0 ? "#2f7d3c" : (delta < 0 ? "#d9601a" : "#847f6f");
+
+    const svg =
+      '<svg viewBox="0 0 ' + W + ' ' + H + '" preserveAspectRatio="xMidYMid meet" style="width:100%;height:auto;display:block;">' +
+        gridLines +
+        '<path d="' + areaD + '" fill="#c9971f" fill-opacity="0.08" stroke="none" />' +
+        '<path d="' + pathD + '" fill="none" stroke="#0d2149" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round" />' +
+        dots +
+        yLabels +
+        xLabels +
+      '</svg>';
+
+    wrap.innerHTML =
+      '<div style="padding:6px 14px 2px 14px;display:flex;align-items:baseline;justify-content:space-between;gap:8px;">' +
+        '<span style="font-size:11.5px;color:#847f6f;">' + n + ' séances notées</span>' +
+        '<span style="font-size:12.5px;font-weight:800;color:' + deltaColor + ';">' + deltaLabel + ' pts depuis la 1ère séance</span>' +
+      '</div>' +
+      '<div style="padding:0 10px 14px 10px;">' + svg + '</div>';
   }
 
   function kpiCard(value, label, sub, wide){
