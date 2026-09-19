@@ -176,16 +176,92 @@
     text-align:center;
     margin:-6px 0 14px 0;
   }
+  /* ---- Liste des séances (accueil) ---- */
+  .jg-list-head{
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    gap:10px;
+    margin:2px 0 10px 0;
+  }
+  .jg-list-count{
+    font-size:12px;
+    font-weight:800;
+    color:#847f6f;
+    letter-spacing:0.2px;
+  }
+  .jg-sort{
+    display:flex;
+    background:#ece9df;
+    border-radius:8px;
+    padding:2px;
+    gap:2px;
+  }
+  .jg-sort button{
+    border:none;
+    background:transparent;
+    color:#7d7767;
+    font-size:11.5px;
+    font-weight:800;
+    padding:5px 9px;
+    border-radius:6px;
+    cursor:pointer;
+  }
+  .jg-sort button.active{
+    background:#fff;
+    color:var(--navy);
+    box-shadow:0 1px 2px rgba(0,0,0,0.08);
+  }
+  .jg-month{
+    font-size:11.5px;
+    font-weight:800;
+    color:#a39d8a;
+    letter-spacing:0.6px;
+    text-transform:uppercase;
+    margin:14px 0 8px 2px;
+  }
+  .jg-month:first-child{ margin-top:0; }
+  .jg-month-grid{ display:block; }
+
   .jg-session-card{
     background:#fff;
     border-radius:12px;
-    box-shadow:0 1px 3px rgba(0,0,0,0.08);
-    padding:12px 14px;
-    margin-bottom:10px;
+    box-shadow:0 1px 3px rgba(0,0,0,0.07);
+    padding:10px 12px;
+    margin-bottom:8px;
     display:flex;
     align-items:center;
-    gap:10px;
+    gap:11px;
     cursor:pointer;
+    border:1px solid transparent;
+  }
+  .jg-session-card:hover{ border-color:#e0dbcb; }
+  .jg-session-card.is-closed{ background:#faf9f5; }
+  .jg-session-card .date-chip{
+    flex-shrink:0;
+    width:46px;
+    background:var(--navy);
+    color:#fff;
+    border-radius:9px;
+    padding:6px 0 5px 0;
+    text-align:center;
+    line-height:1;
+  }
+  .jg-session-card.is-closed .date-chip{ background:#6d7688; }
+  .jg-session-card .date-chip .d{
+    display:block;
+    font-size:18px;
+    font-weight:800;
+    color:var(--gold-light);
+  }
+  .jg-session-card .date-chip .m{
+    display:block;
+    font-size:9.5px;
+    font-weight:700;
+    text-transform:uppercase;
+    letter-spacing:0.5px;
+    margin-top:3px;
+    opacity:0.85;
   }
   .jg-session-card .info{flex:1; min-width:0;}
   .jg-session-card .title{
@@ -199,7 +275,24 @@
   .jg-session-card .meta{
     font-size:12px;
     color:#847f6f;
-    margin-top:2px;
+    margin-top:3px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+  .jg-session-card .pill{
+    flex-shrink:0;
+    font-size:10px;
+    font-weight:800;
+    padding:4px 8px;
+    border-radius:20px;
+    background:#fdf3d9;
+    color:#8a6a10;
+    white-space:nowrap;
+  }
+  .jg-session-card .pill.done{
+    background:#eceade;
+    color:#7d7767;
   }
   .jg-session-card .stat{
     font-size:11px;
@@ -209,15 +302,36 @@
   }
   .jg-session-card .del{
     border:none;
-    background:#fbeeee;
-    color:#a4453f;
+    background:transparent;
+    color:#c3bcab;
     border-radius:8px;
-    width:34px;
-    height:34px;
+    width:28px;
+    height:28px;
     flex-shrink:0;
-    font-size:15px;
+    font-size:14px;
     cursor:pointer;
   }
+  .jg-session-card .del:hover{ background:#fbeeee; color:#a4453f; }
+  .jg-backup{
+    border:1px solid var(--line);
+    border-radius:10px;
+    background:#fff;
+    padding:0;
+    margin-bottom:14px;
+  }
+  .jg-backup > summary{
+    list-style:none;
+    cursor:pointer;
+    padding:10px 12px;
+    font-size:12.5px;
+    font-weight:800;
+    color:#7d7767;
+  }
+  .jg-backup > summary::-webkit-details-marker{ display:none; }
+  .jg-backup[open] > summary{ border-bottom:1px solid var(--line); }
+  .jg-backup .inner{ padding:12px; }
+  .jg-backup .inner .jg-io-row{ margin-bottom:8px; }
+  .jg-backup .inner .jg-io-note{ margin:0; text-align:left; }
   .jg-empty{
     text-align:center;
     color:#9a9484;
@@ -804,10 +918,10 @@
   @media (min-width:640px){
     .jg-root{ max-width:900px; }
     .jg-list-wrap{ padding:20px 22px 0 22px; }
-    #jgSessionList{
+    .jg-month-grid{
       display:grid;
       grid-template-columns:1fr 1fr;
-      gap:12px;
+      gap:10px;
     }
     .jg-session-card{ margin-bottom:0; }
     .jg-kpi-grid{ grid-template-columns:repeat(3, 1fr); }
@@ -817,7 +931,7 @@
 
   @media (min-width:1024px){
     .jg-root{ max-width:1100px; }
-    #jgSessionList{ grid-template-columns:1fr 1fr 1fr; }
+    .jg-month-grid{ grid-template-columns:1fr 1fr 1fr; }
     .jg-kpi-grid{ grid-template-columns:repeat(4, 1fr); }
     .jg-new-btn, .jg-dash-btn{ max-width:460px; margin-left:auto; margin-right:auto; display:block; }
   }
@@ -843,12 +957,24 @@
   <div id="jgListView" class="jg-list-wrap" style="display:none;">
     <button class="jg-new-btn" id="jgNewSession">+ Nouvelle séance</button>
     <button class="jg-dash-btn" id="jgDashboardBtn">📊 Tableau de bord</button>
-    <div class="jg-io-row">
-      <button class="jg-io-btn" id="jgExportData">⭳ Exporter (.json)</button>
-      <button class="jg-io-btn" id="jgImportData">⭱ Importer (.json)</button>
-      <input type="file" id="jgImportFile" accept="application/json,.json" style="display:none;">
+    <details class="jg-backup">
+      <summary>💾 Sauvegarde et transfert</summary>
+      <div class="inner">
+        <div class="jg-io-row">
+          <button class="jg-io-btn" id="jgExportData">⭳ Exporter (.json)</button>
+          <button class="jg-io-btn" id="jgImportData">⭱ Importer (.json)</button>
+          <input type="file" id="jgImportFile" accept="application/json,.json" style="display:none;">
+        </div>
+        <div class="jg-io-note">Sauvegardez régulièrement pour garder vos séances en sécurité ou les transférer sur un autre téléphone.</div>
+      </div>
+    </details>
+    <div class="jg-list-head" id="jgListHead" style="display:none;">
+      <div class="jg-list-count" id="jgListCount"></div>
+      <div class="jg-sort" id="jgSortToggle">
+        <button type="button" data-order="desc">Plus récentes</button>
+        <button type="button" data-order="asc">Plus anciennes</button>
+      </div>
     </div>
-    <div class="jg-io-note">Sauvegardez régulièrement pour garder vos séances en sécurité ou les transférer sur un autre téléphone.</div>
     <div id="jgSessionList"></div>
   </div>
 
@@ -925,8 +1051,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "1.7";
+  const APP_VERSION = "1.8";
   const CHANGELOG = [
+    {
+      version: "1.8", date: "19/09/2026",
+      changes: [
+        "Page d'accueil réorganisée : les séances sont classées par date de séance et regroupées par mois, avec un choix « Plus récentes » / « Plus anciennes » conservé d'une ouverture à l'autre.",
+        "Nouvelle présentation des séances : pastille de date (jour + mois), nom du plateau, lieu et étiquette « En cours » ou « Terminée » à la place du cadenas.",
+        "Accueil allégé : l'export et l'import .json sont regroupés dans un bloc « Sauvegarde et transfert » dépliable, et un compteur rappelle le nombre de séances et celles encore en cours."
+      ]
+    },
     {
       version: "1.7", date: "19/09/2026",
       changes: [
@@ -1875,40 +2009,127 @@
     }
   }
 
+  const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
+  const MONTHS_FR_SHORT = ["janv.","févr.","mars","avril","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+  let sessionSortOrder = "desc"; // "desc" = plus récentes d'abord, "asc" = plus anciennes d'abord
+
+  // Clé de tri : date de la séance (chronologique), puis dernière modification.
+  function sessionSortKey(s){
+    const parts = (s.date || "").split("-");
+    if(parts.length === 3){
+      const t = Date.UTC(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+      if(!isNaN(t)) return t;
+    }
+    return s.updatedAt || 0;
+  }
+
+  function monthGroupLabel(iso){
+    const parts = (iso || "").split("-");
+    if(parts.length !== 3) return "Sans date";
+    const m = Number(parts[1]) - 1;
+    if(isNaN(m) || m < 0 || m > 11) return "Sans date";
+    return MONTHS_FR[m] + " " + parts[0];
+  }
+
+  function buildSessionCard(s){
+    const card = document.createElement("div");
+    card.className = "jg-session-card" + (s.closed ? " is-closed" : "");
+
+    const parts = (s.date || "").split("-");
+    const chip = document.createElement("div");
+    chip.className = "date-chip";
+    const d = document.createElement("span");
+    d.className = "d";
+    const m = document.createElement("span");
+    m.className = "m";
+    if(parts.length === 3){
+      d.textContent = String(Number(parts[2]));
+      const mi = Number(parts[1]) - 1;
+      m.textContent = (mi >= 0 && mi <= 11) ? MONTHS_FR_SHORT[mi] : "";
+    }else{
+      d.textContent = "?";
+      m.textContent = "";
+    }
+    chip.appendChild(d);
+    chip.appendChild(m);
+
+    const info = document.createElement("div");
+    info.className = "info";
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = s.plateau || ("Séance du " + frDate(s.date));
+    const meta = document.createElement("div");
+    meta.className = "meta";
+    meta.textContent = s.lieu || frDate(s.date);
+    info.appendChild(title);
+    info.appendChild(meta);
+
+    const pill = document.createElement("span");
+    pill.className = "pill" + (s.closed ? " done" : "");
+    pill.textContent = s.closed ? "Terminée" : "En cours";
+
+    const del = document.createElement("button");
+    del.className = "del";
+    del.type = "button";
+    del.title = "Supprimer cette séance";
+    del.setAttribute("aria-label", "Supprimer cette séance");
+    del.textContent = "\u2715";
+    del.addEventListener("click", function(e){ deleteSession(s.id, e); });
+
+    card.appendChild(chip);
+    card.appendChild(info);
+    card.appendChild(pill);
+    card.appendChild(del);
+    card.addEventListener("click", function(){ openSession(s.id); });
+    return card;
+  }
+
   function renderSessionList(){
     sessionListEl.innerHTML = "";
+    const head = document.getElementById("jgListHead");
+
     if(sessionsIndex.length === 0){
+      if(head) head.style.display = "none";
       const empty = document.createElement("div");
       empty.className = "jg-empty";
       empty.textContent = "Aucune séance enregistrée. Créez votre première séance ci-dessus.";
       sessionListEl.appendChild(empty);
       return;
     }
+
+    if(head){
+      head.style.display = "";
+      const n = sessionsIndex.length;
+      const open = sessionsIndex.filter(function(s){ return !s.closed; }).length;
+      const countEl = document.getElementById("jgListCount");
+      if(countEl){
+        countEl.textContent = n + (n > 1 ? " séances" : " séance") + (open ? " · " + open + " en cours" : "");
+      }
+      Array.prototype.forEach.call(head.querySelectorAll(".jg-sort button"), function(b){
+        b.classList.toggle("active", b.dataset.order === sessionSortOrder);
+      });
+    }
+
     const sorted = sessionsIndex.slice().sort(function(a, b){
-      return (b.updatedAt || 0) - (a.updatedAt || 0);
+      const diff = sessionSortKey(a) - sessionSortKey(b);
+      return sessionSortOrder === "asc" ? diff : -diff;
     });
+
+    let currentLabel = null;
+    let grid = null;
     sorted.forEach(function(s){
-      const card = document.createElement("div");
-      card.className = "jg-session-card";
-      const info = document.createElement("div");
-      info.className = "info";
-      const title = document.createElement("div");
-      title.className = "title";
-      title.textContent = (s.closed ? "🔒 " : "") + (s.plateau || ("Séance du " + frDate(s.date)));
-      const meta = document.createElement("div");
-      meta.className = "meta";
-      const metaParts = [frDate(s.date), s.lieu].filter(Boolean);
-      meta.textContent = metaParts.join(" · ");
-      info.appendChild(title);
-      info.appendChild(meta);
-      const del = document.createElement("button");
-      del.className = "del";
-      del.textContent = "✕";
-      del.addEventListener("click", function(e){ deleteSession(s.id, e); });
-      card.appendChild(info);
-      card.appendChild(del);
-      card.addEventListener("click", function(){ openSession(s.id); });
-      sessionListEl.appendChild(card);
+      const label = monthGroupLabel(s.date);
+      if(label !== currentLabel){
+        currentLabel = label;
+        const h = document.createElement("div");
+        h.className = "jg-month";
+        h.textContent = label;
+        sessionListEl.appendChild(h);
+        grid = document.createElement("div");
+        grid.className = "jg-month-grid";
+        sessionListEl.appendChild(grid);
+      }
+      grid.appendChild(buildSessionCard(s));
     });
   }
 
@@ -2213,6 +2434,19 @@
   backBtn.addEventListener("click", backToList);
   document.getElementById("jgNewSession").addEventListener("click", createSession);
   document.getElementById("jgDashboardBtn").addEventListener("click", openDashboard);
+
+  // Ordre d'affichage des séances (mémorisé d'une ouverture à l'autre)
+  try{
+    const savedOrder = localStorage.getItem("jgSessionSortOrder");
+    if(savedOrder === "asc" || savedOrder === "desc") sessionSortOrder = savedOrder;
+  }catch(e){}
+  document.getElementById("jgSortToggle").addEventListener("click", function(e){
+    const btn = e.target.closest("button[data-order]");
+    if(!btn || btn.dataset.order === sessionSortOrder) return;
+    sessionSortOrder = btn.dataset.order;
+    try{ localStorage.setItem("jgSessionSortOrder", sessionSortOrder); }catch(err){}
+    renderSessionList();
+  });
 
   // ---- Export / Import all data as JSON ----
   document.getElementById("jgExportData").addEventListener("click", exportAllDataAsJSON);
