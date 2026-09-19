@@ -1003,8 +1003,10 @@
     <h1>FOOTJONGLE</h1>
     <div class="jg-gate-sub">Accès réservé aux éducateurs</div>
     <form id="jgGateForm">
+      <label for="jgGateEmail">Adresse e-mail</label>
+      <input type="email" id="jgGateEmail" name="email" autocomplete="email" required>
       <label for="jgGatePwd">Mot de passe</label>
-      <input type="password" id="jgGatePwd" autocomplete="current-password" required>
+      <input type="password" id="jgGatePwd" name="password" autocomplete="current-password" required>
       <div class="jg-gate-err" id="jgGateErr" style="display:none;"></div>
       <button type="submit" class="jg-btn primary" id="jgGateSubmit">Se connecter</button>
     </form>
@@ -1102,7 +1104,10 @@
     <button type="button" class="jg-version-btn" id="jgFooterVersion">FootJongle v1.0</button>
     · © 2026 SM
     <div id="jgSyncBadge" style="margin-top:4px; font-size:10.5px; font-weight:700;"></div>
-    <button type="button" id="jgLogoutBtn" style="display:none; margin-top:6px; border:none; background:transparent; color:#a89b70; font-size:10.5px; font-weight:700; text-decoration:underline; cursor:pointer;">Se déconnecter</button>
+    <div id="jgAccountLine" style="display:none; margin-top:6px; font-size:10.5px; color:#a89b70;">
+      Connecté : <span id="jgAccountEmail"></span> ·
+      <button type="button" id="jgLogoutBtn" style="border:none; background:transparent; color:#a89b70; font-size:10.5px; font-weight:700; text-decoration:underline; cursor:pointer; padding:0;">se déconnecter</button>
+    </div>
   </div>
 </div>
 
@@ -1139,8 +1144,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "2.0";
+  const APP_VERSION = "2.1";
   const CHANGELOG = [
+    {
+      version: "2.1", date: "19/09/2026",
+      changes: [
+        "Connexion éducateurs : l'écran demande maintenant une adresse e-mail en plus du mot de passe, pour que chaque éducateur se connecte avec son propre compte au lieu d'un compte unique partagé.",
+        "Pour ajouter ou retirer un éducateur, plus besoin de modifier le fichier : tout se passe désormais dans la console Firebase (Authentication > Users).",
+        "Le pied de page affiche l'adresse du compte connecté, à côté du lien « se déconnecter »."
+      ]
+    },
     {
       version: "2.0", date: "19/09/2026",
       changes: [
@@ -1426,14 +1439,11 @@
   // lecture et toute écriture : c'est ce qui protège réellement les données,
   // pas l'écran ci-dessous (qui n'est que la porte d'entrée).
   //
-  // ACCESS_EMAIL est l'identifiant technique du compte partagé des éducateurs.
-  // 1) Remplacez la valeur ci-dessous par une adresse e-mail réelle que vous
-  //    consultez (utile si vous devez réinitialiser le mot de passe un jour).
-  // 2) Créez CE MÊME compte (adresse + mot de passe) dans la console Firebase :
-  //    Authentication > Users > Add user.
-  // 3) Activez le fournisseur "E-mail/Mot de passe" dans Authentication >
-  //    Sign-in method, s'il ne l'est pas déjà.
-  const ACCESS_EMAIL = "acces@votre-club.fr";
+  // Chaque éducateur se connecte avec son propre compte (adresse + mot de
+  // passe). Pour ajouter ou retirer quelqu'un, tout se passe dans la console
+  // Firebase — aucune modification de ce fichier n'est nécessaire :
+  // 1) Authentication > Sign-in method > fournisseur "E-mail/Mot de passe" activé.
+  // 2) Authentication > Users > Add user, pour chaque éducateur.
 
   let auth = null;
   let authReady = false;
@@ -3949,9 +3959,12 @@
   // ---- Porte d'entrée : démarre l'appli seulement après connexion ----
   const gateEl = document.getElementById("jgGate");
   const gateFormEl = document.getElementById("jgGateForm");
+  const gateEmailEl = document.getElementById("jgGateEmail");
   const gatePwdEl = document.getElementById("jgGatePwd");
   const gateErrEl = document.getElementById("jgGateErr");
   const gateSubmitEl = document.getElementById("jgGateSubmit");
+  const accountLineEl = document.getElementById("jgAccountLine");
+  const accountEmailEl = document.getElementById("jgAccountEmail");
   const logoutBtnEl = document.getElementById("jgLogoutBtn");
 
   function showGateError(msg){
@@ -3966,24 +3979,29 @@
     document.getElementById("jgGateLogo").src = LOGO_DATA_URI;
     gateEl.style.display = "flex";
     document.getElementById("jgRoot").setAttribute("aria-hidden", "true");
-    logoutBtnEl.style.display = "none";
-    setTimeout(function(){ gatePwdEl.focus(); }, 50);
+    accountLineEl.style.display = "none";
+    setTimeout(function(){ gateEmailEl.focus(); }, 50);
   }
-  function hideGate(){
+  function hideGate(user){
     gateEl.style.display = "none";
     document.getElementById("jgRoot").removeAttribute("aria-hidden");
-    if(authReady) logoutBtnEl.style.display = "inline";
+    if(authReady && user){
+      accountEmailEl.textContent = user.email || "";
+      accountLineEl.style.display = "block";
+    }
   }
 
   // Les versions récentes des SDK Firebase renvoient le même code d'erreur
-  // ("identifiants invalides") que le mot de passe soit faux ou que le compte
-  // n'existe pas, pour ne pas révéler quelles adresses sont enregistrées.
+  // ("identifiants invalides") que le mot de passe soit faux, que l'adresse
+  // soit mal orthographiée ou que le compte n'existe pas, pour ne pas révéler
+  // quelles adresses sont enregistrées.
   function authErrorMessage(err){
     const code = err && err.code;
     if(code === "auth/operation-not-allowed") return "Connexion non configurée : contactez la personne qui gère l'application.";
     if(code === "auth/network-request-failed") return "Impossible de contacter le serveur. Vérifiez votre connexion.";
     if(code === "auth/too-many-requests") return "Trop de tentatives : réessayez dans quelques minutes.";
-    return "Mot de passe incorrect.";
+    if(code === "auth/invalid-email") return "Adresse e-mail invalide.";
+    return "Adresse ou mot de passe incorrect.";
   }
 
   let bootStarted = false;
@@ -3998,11 +4016,12 @@
       e.preventDefault();
       clearGateError();
       if(!authReady){ showGateError("Connexion indisponible pour le moment."); return; }
+      const email = gateEmailEl.value.trim();
       const pwd = gatePwdEl.value;
-      if(!pwd) return;
+      if(!email || !pwd) return;
       gateSubmitEl.disabled = true;
       gateSubmitEl.textContent = "Connexion…";
-      auth.signInWithEmailAndPassword(ACCESS_EMAIL, pwd)
+      auth.signInWithEmailAndPassword(email, pwd)
         .catch(function(err){
           console.error("Sign-in error:", err);
           showGateError(authErrorMessage(err));
@@ -4024,7 +4043,7 @@
   if(authReady){
     try{ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){ /* ignore */ }
     auth.onAuthStateChanged(function(user){
-      if(user){ hideGate(); bootAppOnce(); }
+      if(user){ hideGate(user); bootAppOnce(); }
       else{ showGate(); }
     }, function(err){
       console.error("Auth state error:", err);
