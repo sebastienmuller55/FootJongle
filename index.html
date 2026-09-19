@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FootJongle — Défis Jonglerie U11</title>
+<title>FootJongle — U11</title>
 <style>
   :root{
     --navy:#0d2149;
@@ -1157,8 +1157,16 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "2.3";
+  const APP_VERSION = "2.4";
   const CHANGELOG = [
+    {
+      version: "2.4", date: "19/09/2026",
+      changes: [
+        "Isolation des données par club : chaque club ne voit plus que ses propres séances (les éducateurs de CAPA ne voient pas celles d'un autre club, et inversement).",
+        "Le club de chaque compte est déterminé une fois pour toutes à l'inscription (via le code d'invitation) et mémorisé dans un profil Firestore dédié.",
+        "Migration automatique et sans action requise : les séances déjà existantes (créées avant cette version) sont rattachées au club CAPA au premier chargement, tant que les nouvelles règles Firestore par club n'ont pas encore été mises en place (voir les nouvelles règles fournies séparément)."
+      ]
+    },
     {
       version: "2.3", date: "19/09/2026",
       changes: [
@@ -1387,6 +1395,20 @@
   const customRows = new Set();
   const INDEX_KEY = "jonglerie:index";
   const SESSION_KEY_PREFIX = "jonglerie:session:";
+  // Isolation des données par club : chaque club (hors club d'origine) a ses
+  // propres clés de cache local, préfixées par son clubId. Le club d'origine
+  // ("capa") garde ses clés historiques telles quelles, pour ne perdre aucune
+  // donnée déjà en cache sur les appareils existants.
+  function indexKey(){
+    return (currentClubId && currentClubId !== DEFAULT_LEGACY_CLUB_ID)
+      ? "jonglerie:" + currentClubId + ":index"
+      : INDEX_KEY;
+  }
+  function sessionKey(id){
+    return (currentClubId && currentClubId !== DEFAULT_LEGACY_CLUB_ID)
+      ? "jonglerie:" + currentClubId + ":session:" + id
+      : SESSION_KEY_PREFIX + id;
+  }
 
   // Storage adapter: uses the Claude Artifact storage bridge when available
   // (viewing inside claude.ai), and transparently falls back to the browser's
@@ -1497,6 +1519,7 @@
     if(!firestoreReady || !db) return;
     try{
       await db.collection(FIRESTORE_COLLECTION).doc(session.id).set({
+        clubId: currentClubId,
         date: session.date || "",
         plateau: session.plateau || "",
         lieu: session.lieu || "",
@@ -1523,7 +1546,9 @@
 
   function subscribeToFirestore(){
     if(!firestoreReady || !db) return;
-    db.collection(FIRESTORE_COLLECTION).onSnapshot(async function(snapshot){
+    // Cloisonnement par club : chaque éducateur ne voit et ne reçoit que les
+    // séances de son propre club (clubId résolu à la connexion).
+    db.collection(FIRESTORE_COLLECTION).where("clubId", "==", currentClubId).onSnapshot(async function(snapshot){
       const newIndex = [];
       for(const docSnap of snapshot.docs){
         const data = docSnap.data() || {};
@@ -1539,7 +1564,7 @@
           teams: Array.isArray(data.teams) ? data.teams : []
         };
         newIndex.push({ id: id, date: fullSession.date, plateau: fullSession.plateau, lieu: fullSession.lieu, updatedAt: fullSession.updatedAt, closed: fullSession.closed });
-        try{ await storageAdapter.set(SESSION_KEY_PREFIX + id, JSON.stringify(fullSession)); }catch(e){ /* ignore cache write errors */ }
+        try{ await storageAdapter.set(sessionKey(id), JSON.stringify(fullSession)); }catch(e){ /* ignore cache write errors */ }
       }
       newIndex.sort(function(a, b){
         return (b.date || "").localeCompare(a.date || "") || ((b.updatedAt || 0) - (a.updatedAt || 0));
@@ -1606,7 +1631,7 @@
 
   async function loadIndex(){
     try{
-      const result = await storageAdapter.get(INDEX_KEY);
+      const result = await storageAdapter.get(indexKey());
       if(result && result.value){
         const parsed = JSON.parse(result.value);
         if(Array.isArray(parsed)) sessionsIndex = parsed;
@@ -1618,7 +1643,7 @@
 
   async function saveIndex(){
     try{
-      await storageAdapter.set(INDEX_KEY, JSON.stringify(sessionsIndex));
+      await storageAdapter.set(indexKey(), JSON.stringify(sessionsIndex));
     }catch(e){
       console.error("Index save error:", e);
     }
@@ -1626,7 +1651,7 @@
 
   async function loadSession(id){
     try{
-      const result = await storageAdapter.get(SESSION_KEY_PREFIX + id);
+      const result = await storageAdapter.get(sessionKey(id));
       if(result && result.value){
         const parsed = JSON.parse(result.value);
         if(parsed && Array.isArray(parsed.teams)) return normalizeSession(parsed);
@@ -1641,7 +1666,7 @@
     saveTimer = setTimeout(async function(){
       try{
         currentSession.updatedAt = Date.now();
-        await storageAdapter.set(SESSION_KEY_PREFIX + currentSession.id, JSON.stringify(currentSession));
+        await storageAdapter.set(sessionKey(currentSession.id), JSON.stringify(currentSession));
         pushSessionToFirestore(currentSession);
         const idxEntry = sessionsIndex.find(function(s){ return s.id === currentSession.id; });
         if(idxEntry){
@@ -1680,7 +1705,7 @@
     // Persist in the background so the editor opens instantly even if storage is slow/unavailable.
     (async function(){
       try{
-        await storageAdapter.set(SESSION_KEY_PREFIX + id, JSON.stringify(session));
+        await storageAdapter.set(sessionKey(id), JSON.stringify(session));
         await saveIndex();
         pushSessionToFirestore(session);
       }catch(e){
@@ -1711,7 +1736,7 @@
     render();
     (async function(){
       try{
-        await storageAdapter.delete(SESSION_KEY_PREFIX + id);
+        await storageAdapter.delete(sessionKey(id));
         await saveIndex();
         deleteSessionFromFirestore(id);
       }catch(e){
@@ -2841,7 +2866,7 @@
           );
           if(!keep){ skipped++; continue; }
         }
-        await storageAdapter.set(SESSION_KEY_PREFIX + session.id, JSON.stringify(session));
+        await storageAdapter.set(sessionKey(session.id), JSON.stringify(session));
         pushSessionToFirestore(session);
         const summary = { id: session.id, date: session.date, plateau: session.plateau, lieu: session.lieu, updatedAt: session.updatedAt || Date.now(), closed: !!session.closed };
         if(alreadyThere){
@@ -3977,6 +4002,7 @@
     document.getElementById("jgIllusImg").src = ILLUS_DATA_URI;
     document.getElementById("jgFooterVersion").textContent = "FootJongle v" + APP_VERSION;
     setSyncStatus(false);
+    await migrateLegacySessionsIfNeeded();
     await loadIndex();
     view = "list";
     render();
@@ -3985,19 +4011,94 @@
 
   // ---- Porte d'entrée : démarre l'appli seulement après connexion ----
 
+  // Club d'origine, avant l'introduction des codes d'invitation et de
+  // l'isolation par club : conserve les séances et les clés de cache déjà
+  // existantes, sans rien migrer de force ni rien perdre.
+  const DEFAULT_LEGACY_CLUB_ID = "capa";
+
   // Codes d'invitation par club : un club potentiel = une ligne ici.
   // Le code peut être n'importe quelle chaîne (générée une fois, à
-  // communiquer aux éducateurs du club concerné). Il n'est pas secret côté
+  // communiquer aux éducateurs du club concerné). clubId identifie le club
+  // de façon stable (sert à isoler les séances) ; il ne doit jamais changer
+  // une fois des comptes ou des séances créés avec.  Il n'est pas secret côté
   // sécurité — la vraie protection reste les règles Firestore — il sert
   // surtout à éviter qu'un inconnu tombant sur l'URL crée un compte au hasard,
   // et à savoir de quel club vient chaque inscription.
   const CLUB_INVITE_CODES = [
-    { code: "WE5ZPK", club: "CAPA" }
+    { code: "WE5ZPK", club: "CAPA", clubId: DEFAULT_LEGACY_CLUB_ID }
   ];
   function findClubByInviteCode(raw){
     const code = String(raw || "").trim().toUpperCase();
     if(!code) return null;
     return CLUB_INVITE_CODES.find(function(c){ return c.code === code; }) || null;
+  }
+
+  // Club de l'éducateur actuellement connecté, résolu après authentification
+  // (voir resolveUserClub) et utilisé pour cloisonner Firestore et le cache local.
+  // Par défaut le club d'origine, pour que le mode hors-ligne / sans Firebase
+  // (voir plus bas) continue d'utiliser exactement les clés de cache historiques.
+  let currentClubId = DEFAULT_LEGACY_CLUB_ID;
+  let currentClubName = "CAPA";
+
+  // Retrouve (ou attribue) le club d'un utilisateur, via son profil
+  // Firestore users/{uid}.clubId. Un compte sans profil (créé avant
+  // l'introduction des clubs) est rattaché au club d'origine et son profil
+  // est créé au passage, pour que les fois suivantes soient immédiates.
+  async function resolveUserClub(user){
+    const fallback = { clubId: DEFAULT_LEGACY_CLUB_ID, club: (user && user.displayName) || "CAPA" };
+    if(!firestoreReady || !db || !user) return fallback;
+    try{
+      const snap = await db.collection("users").doc(user.uid).get();
+      if(snap.exists){
+        const data = snap.data() || {};
+        if(data.clubId) return { clubId: data.clubId, club: data.club || fallback.club };
+      }
+    }catch(e){
+      console.error("Lecture du profil club impossible:", e);
+      return fallback; // hors-ligne / permissions : on continue avec le club par défaut
+    }
+    try{
+      await db.collection("users").doc(user.uid).set({
+        email: user.email || "",
+        clubId: fallback.clubId,
+        club: fallback.club,
+        createdAt: Date.now()
+      }, { merge: true });
+    }catch(e){ console.error("Écriture du profil club impossible:", e); }
+    return fallback;
+  }
+
+  // Rattache au club d'origine les séances créées avant l'introduction du
+  // multi-club (elles n'ont pas encore de champ clubId). Ne s'exécute que
+  // pour ce club, et n'a d'effet qu'une fois : une fois toutes les séances
+  // migrées, cette fonction ne trouve plus rien à faire.
+  // Important : elle ne peut réussir QUE tant que les règles Firestore
+  // autorisent encore la lecture de toute la collection (l'ancienne règle
+  // « allow read, write: if request.auth != null; »). Une fois les règles
+  // resserrées par club (voir la règle jonglerie_sessions ci-dessous), cette
+  // migration doit déjà avoir eu lieu — sinon elle échoue silencieusement
+  // (attendu) et les séances déjà migrées restent visibles normalement.
+  let legacyMigrationAttempted = false;
+  async function migrateLegacySessionsIfNeeded(){
+    if(legacyMigrationAttempted) return;
+    legacyMigrationAttempted = true;
+    if(!firestoreReady || !db || currentClubId !== DEFAULT_LEGACY_CLUB_ID) return;
+    try{
+      const snap = await db.collection(FIRESTORE_COLLECTION).get();
+      const writes = [];
+      snap.forEach(function(docSnap){
+        const data = docSnap.data() || {};
+        if(!data.clubId){
+          writes.push(docSnap.ref.set({ clubId: DEFAULT_LEGACY_CLUB_ID }, { merge: true }));
+        }
+      });
+      if(writes.length){
+        await Promise.all(writes);
+        console.log("Migration club : " + writes.length + " séance(s) rattachée(s) à \"" + DEFAULT_LEGACY_CLUB_ID + "\".");
+      }
+    }catch(e){
+      console.warn("Migration club ignorée (déjà faite, ou règles déjà resserrées par club):", e);
+    }
   }
 
   const gateEl = document.getElementById("jgGate");
@@ -4071,11 +4172,12 @@
     accountLineEl.style.display = "none";
     setTimeout(function(){ gateEmailEl.focus(); }, 50);
   }
-  function hideGate(user){
+  function hideGate(user, clubName){
     gateEl.style.display = "none";
     document.getElementById("jgRoot").removeAttribute("aria-hidden");
     if(authReady && user){
-      accountEmailEl.textContent = user.email ? (user.email + (user.displayName ? " (" + user.displayName + ")" : "")) : "";
+      const label = clubName || user.displayName || "";
+      accountEmailEl.textContent = user.email ? (user.email + (label ? " (" + label + ")" : "")) : "";
       accountLineEl.style.display = "block";
     }
   }
@@ -4123,13 +4225,28 @@
         gateSubmitEl.textContent = "Création du compte…";
         auth.createUserWithEmailAndPassword(email, pwd)
           .then(function(cred){
+            if(!cred || !cred.user) return;
+            const tasks = [];
             // Le nom du club rejoint est mémorisé sur le compte (displayName)
             // pour être réaffiché ensuite, ex. "Connecté : ... (CAPA)".
-            if(cred && cred.user && cred.user.updateProfile){
-              return cred.user.updateProfile({ displayName: club.club }).catch(function(e){
+            if(cred.user.updateProfile){
+              tasks.push(cred.user.updateProfile({ displayName: club.club }).catch(function(e){
                 console.error("updateProfile error:", e);
-              });
+              }));
             }
+            // Profil Firestore users/{uid} : sert de source de vérité pour le
+            // clubId de ce compte (utilisé pour cloisonner les séances).
+            if(firestoreReady && db){
+              tasks.push(db.collection("users").doc(cred.user.uid).set({
+                email: cred.user.email || email,
+                clubId: club.clubId,
+                club: club.club,
+                createdAt: Date.now()
+              }, { merge: true }).catch(function(e){
+                console.error("Écriture du profil club error:", e);
+              }));
+            }
+            return Promise.all(tasks);
           })
           // Firebase connecte automatiquement le nouveau compte : l'écouteur
           // onAuthStateChanged plus bas prend le relais (hideGate + bootAppOnce).
@@ -4167,9 +4284,18 @@
 
   if(authReady){
     try{ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){ /* ignore */ }
-    auth.onAuthStateChanged(function(user){
-      if(user){ hideGate(user); bootAppOnce(); }
-      else{ showGate(); }
+    auth.onAuthStateChanged(async function(user){
+      if(user){
+        const clubInfo = await resolveUserClub(user);
+        currentClubId = clubInfo.clubId;
+        currentClubName = clubInfo.club;
+        hideGate(user, clubInfo.club);
+        bootAppOnce();
+      }else{
+        currentClubId = DEFAULT_LEGACY_CLUB_ID;
+        currentClubName = "CAPA";
+        showGate();
+      }
     }, function(err){
       console.error("Auth state error:", err);
       showGate(); // en cas d'erreur du service, on affiche la connexion par sécurité
