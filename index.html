@@ -737,6 +737,11 @@
   }
   .jg-gate-card .jg-btn{ width:100%; }
   #jgGateSubmit:disabled{ opacity:0.6; }
+  .jg-gate-toggle{ margin-top:16px; font-size:12.5px; color:#847f6f; text-align:center; }
+  .jg-gate-toggle button{
+    border:none; background:transparent; color:var(--navy); font-weight:800;
+    font-size:12.5px; text-decoration:underline; cursor:pointer; padding:0; font-family:inherit;
+  }
   .col-labels span:nth-child(3), .col-labels span:nth-child(4){text-align:center;}
   .jg-row.absent{background:#faf4f4;}
   .jg-row.absent .num{color:#c9a4a0;}
@@ -1001,15 +1006,23 @@
   <div class="jg-gate-card">
     <img class="jg-gate-logo" id="jgGateLogo" alt="Logo District de l'Eure FFF">
     <h1>FOOTJONGLE</h1>
-    <div class="jg-gate-sub">Accès réservé aux éducateurs</div>
+    <div class="jg-gate-sub" id="jgGateSub">Accès réservé aux éducateurs</div>
     <form id="jgGateForm">
       <label for="jgGateEmail">Adresse e-mail</label>
       <input type="email" id="jgGateEmail" name="email" autocomplete="email" required>
+      <label for="jgGateInvite" id="jgGateInviteLabel" style="display:none;">Code d'invitation du club</label>
+      <input type="text" id="jgGateInvite" name="invite" autocomplete="off" autocapitalize="characters"
+             style="display:none; text-transform:uppercase; letter-spacing:1.5px;" placeholder="Ex. WE5ZPK">
       <label for="jgGatePwd">Mot de passe</label>
-      <input type="password" id="jgGatePwd" name="password" autocomplete="current-password" required>
+      <input type="password" id="jgGatePwd" name="password" autocomplete="current-password" required minlength="6">
+      <label for="jgGatePwd2" id="jgGatePwd2Label" style="display:none;">Confirmer le mot de passe</label>
+      <input type="password" id="jgGatePwd2" name="password2" autocomplete="new-password" style="display:none;">
       <div class="jg-gate-err" id="jgGateErr" style="display:none;"></div>
       <button type="submit" class="jg-btn primary" id="jgGateSubmit">Se connecter</button>
     </form>
+    <div class="jg-gate-toggle" id="jgGateToggle">
+      Pas encore de compte ? <button type="button" id="jgGateToggleBtn">Créer un compte</button>
+    </div>
   </div>
 </div>
 
@@ -1144,8 +1157,22 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "2.1";
+  const APP_VERSION = "2.3";
   const CHANGELOG = [
+    {
+      version: "2.3", date: "19/09/2026",
+      changes: [
+        "Inscription : un code d'invitation par club est désormais demandé pour créer un compte (ex. CAPA : WE5ZPK), afin qu'un inconnu tombant sur le lien de l'application ne puisse pas créer de compte au hasard.",
+        "Le nom du club rejoint est mémorisé sur le compte et affiché dans le pied de page à côté de l'adresse e-mail."
+      ]
+    },
+    {
+      version: "2.2", date: "19/09/2026",
+      changes: [
+        "Écran de connexion : un lien « Créer un compte » permet désormais à un nouvel éducateur de s'inscrire lui-même (e-mail + mot de passe, avec confirmation), sans passer par la console Firebase.",
+        "Messages d'erreur dédiés à l'inscription : adresse déjà utilisée, mot de passe trop court, ou mots de passe qui ne correspondent pas."
+      ]
+    },
     {
       version: "2.1", date: "19/09/2026",
       changes: [
@@ -3957,15 +3984,42 @@
   }
 
   // ---- Porte d'entrée : démarre l'appli seulement après connexion ----
+
+  // Codes d'invitation par club : un club potentiel = une ligne ici.
+  // Le code peut être n'importe quelle chaîne (générée une fois, à
+  // communiquer aux éducateurs du club concerné). Il n'est pas secret côté
+  // sécurité — la vraie protection reste les règles Firestore — il sert
+  // surtout à éviter qu'un inconnu tombant sur l'URL crée un compte au hasard,
+  // et à savoir de quel club vient chaque inscription.
+  const CLUB_INVITE_CODES = [
+    { code: "WE5ZPK", club: "CAPA" }
+  ];
+  function findClubByInviteCode(raw){
+    const code = String(raw || "").trim().toUpperCase();
+    if(!code) return null;
+    return CLUB_INVITE_CODES.find(function(c){ return c.code === code; }) || null;
+  }
+
   const gateEl = document.getElementById("jgGate");
   const gateFormEl = document.getElementById("jgGateForm");
+  const gateSubEl = document.getElementById("jgGateSub");
   const gateEmailEl = document.getElementById("jgGateEmail");
+  const gateInviteEl = document.getElementById("jgGateInvite");
+  const gateInviteLabelEl = document.getElementById("jgGateInviteLabel");
   const gatePwdEl = document.getElementById("jgGatePwd");
+  const gatePwd2El = document.getElementById("jgGatePwd2");
+  const gatePwd2LabelEl = document.getElementById("jgGatePwd2Label");
   const gateErrEl = document.getElementById("jgGateErr");
   const gateSubmitEl = document.getElementById("jgGateSubmit");
+  const gateToggleEl = document.getElementById("jgGateToggle");
+  const gateToggleBtnEl = document.getElementById("jgGateToggleBtn");
   const accountLineEl = document.getElementById("jgAccountLine");
   const accountEmailEl = document.getElementById("jgAccountEmail");
   const logoutBtnEl = document.getElementById("jgLogoutBtn");
+
+  // "login" (par défaut) ou "signup" : bascule l'écran entre connexion et
+  // création de compte, sans dupliquer le formulaire.
+  let gateMode = "login";
 
   function showGateError(msg){
     gateErrEl.textContent = msg;
@@ -3975,8 +4029,43 @@
     gateErrEl.style.display = "none";
     gateErrEl.textContent = "";
   }
+  function applyGateMode(){
+    clearGateError();
+    if(gateMode === "signup"){
+      gateSubEl.textContent = "Créer un compte éducateur";
+      gateInviteEl.style.display = "block";
+      gateInviteLabelEl.style.display = "block";
+      gateInviteEl.required = true;
+      gatePwd2El.style.display = "block";
+      gatePwd2LabelEl.style.display = "block";
+      gatePwd2El.required = true;
+      gatePwdEl.setAttribute("autocomplete", "new-password");
+      gateSubmitEl.textContent = "Créer le compte";
+      gateToggleEl.innerHTML = 'Déjà un compte&nbsp;? <button type="button" id="jgGateToggleBtn">Se connecter</button>';
+    }else{
+      gateSubEl.textContent = "Accès réservé aux éducateurs";
+      gateInviteEl.style.display = "none";
+      gateInviteLabelEl.style.display = "none";
+      gateInviteEl.required = false;
+      gateInviteEl.value = "";
+      gatePwd2El.style.display = "none";
+      gatePwd2LabelEl.style.display = "none";
+      gatePwd2El.required = false;
+      gatePwd2El.value = "";
+      gatePwdEl.setAttribute("autocomplete", "current-password");
+      gateSubmitEl.textContent = "Se connecter";
+      gateToggleEl.innerHTML = 'Pas encore de compte&nbsp;? <button type="button" id="jgGateToggleBtn">Créer un compte</button>';
+    }
+    // le bouton a été recréé via innerHTML : ré-attacher l'écouteur
+    document.getElementById("jgGateToggleBtn").addEventListener("click", function(){
+      gateMode = (gateMode === "signup") ? "login" : "signup";
+      applyGateMode();
+    });
+  }
   function showGate(){
     document.getElementById("jgGateLogo").src = LOGO_DATA_URI;
+    gateMode = "login";
+    applyGateMode();
     gateEl.style.display = "flex";
     document.getElementById("jgRoot").setAttribute("aria-hidden", "true");
     accountLineEl.style.display = "none";
@@ -3986,10 +4075,12 @@
     gateEl.style.display = "none";
     document.getElementById("jgRoot").removeAttribute("aria-hidden");
     if(authReady && user){
-      accountEmailEl.textContent = user.email || "";
+      accountEmailEl.textContent = user.email ? (user.email + (user.displayName ? " (" + user.displayName + ")" : "")) : "";
       accountLineEl.style.display = "block";
     }
   }
+  // Note : le bouton de bascule est recréé par applyGateMode() à chaque
+  // changement de mode (innerHTML), qui réattache lui-même son écouteur.
 
   // Les versions récentes des SDK Firebase renvoient le même code d'erreur
   // ("identifiants invalides") que le mot de passe soit faux, que l'adresse
@@ -4001,6 +4092,8 @@
     if(code === "auth/network-request-failed") return "Impossible de contacter le serveur. Vérifiez votre connexion.";
     if(code === "auth/too-many-requests") return "Trop de tentatives : réessayez dans quelques minutes.";
     if(code === "auth/invalid-email") return "Adresse e-mail invalide.";
+    if(code === "auth/email-already-in-use") return "Un compte existe déjà avec cette adresse. Connectez-vous plutôt.";
+    if(code === "auth/weak-password") return "Mot de passe trop court (6 caractères minimum).";
     return "Adresse ou mot de passe incorrect.";
   }
 
@@ -4019,6 +4112,38 @@
       const email = gateEmailEl.value.trim();
       const pwd = gatePwdEl.value;
       if(!email || !pwd) return;
+
+      if(gateMode === "signup"){
+        const pwd2 = gatePwd2El.value;
+        const club = findClubByInviteCode(gateInviteEl.value);
+        if(!club){ showGateError("Code d'invitation invalide. Demandez-le à votre club."); return; }
+        if(pwd.length < 6){ showGateError("Mot de passe trop court (6 caractères minimum)."); return; }
+        if(pwd !== pwd2){ showGateError("Les deux mots de passe ne correspondent pas."); return; }
+        gateSubmitEl.disabled = true;
+        gateSubmitEl.textContent = "Création du compte…";
+        auth.createUserWithEmailAndPassword(email, pwd)
+          .then(function(cred){
+            // Le nom du club rejoint est mémorisé sur le compte (displayName)
+            // pour être réaffiché ensuite, ex. "Connecté : ... (CAPA)".
+            if(cred && cred.user && cred.user.updateProfile){
+              return cred.user.updateProfile({ displayName: club.club }).catch(function(e){
+                console.error("updateProfile error:", e);
+              });
+            }
+          })
+          // Firebase connecte automatiquement le nouveau compte : l'écouteur
+          // onAuthStateChanged plus bas prend le relais (hideGate + bootAppOnce).
+          .catch(function(err){
+            console.error("Sign-up error:", err);
+            showGateError(authErrorMessage(err));
+          })
+          .finally(function(){
+            gateSubmitEl.disabled = false;
+            gateSubmitEl.textContent = "Créer le compte";
+          });
+        return;
+      }
+
       gateSubmitEl.disabled = true;
       gateSubmitEl.textContent = "Connexion…";
       auth.signInWithEmailAndPassword(email, pwd)
