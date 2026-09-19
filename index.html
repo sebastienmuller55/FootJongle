@@ -1210,8 +1210,15 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "2.5";
+  const APP_VERSION = "2.6";
   const CHANGELOG = [
+    {
+      version: "2.6", date: "19/09/2026",
+      changes: [
+        "Correction de l'import .json : les séances importées n'apparaissent plus une seconde avant de disparaître. L'import attend désormais la réponse du serveur avant d'afficher quoi que ce soit.",
+        "Si le serveur refuse une séance (règles de sécurité, séance existante rattachée à un autre club ou sans club…), l'import la liste explicitement avec le motif, au lieu d'annoncer un faux succès."
+      ]
+    },
     {
       version: "2.5", date: "19/09/2026",
       changes: [
@@ -1582,7 +1589,7 @@
   }
 
   async function pushSessionToFirestore(session){
-    if(!firestoreReady || !db) return;
+    if(!firestoreReady || !db) return { ok: true, local: true };
     try{
       await db.collection(FIRESTORE_COLLECTION).doc(session.id).set({
         clubId: currentClubId,
@@ -1594,9 +1601,11 @@
         closedAt: session.closedAt || null,
         updatedAt: Date.now()
       });
+      return { ok: true };
     }catch(e){
       console.error("Firestore write error:", e);
       setSyncStatus(false);
+      return { ok: false, code: (e && e.code) || "", message: (e && e.message) || String(e) };
     }
   }
 
@@ -2919,12 +2928,11 @@
         alert("Ce fichier ne semble pas être une sauvegarde valide.");
         return;
       }
-      let imported = 0;
       let skipped = 0;
+      const accepted = [];
       for(const session of parsed.sessions){
         if(!session || !session.id || !Array.isArray(session.teams)){ skipped++; continue; }
-        const existingIdx = sessionsIndex.findIndex(function(s){ return s.id === session.id; });
-        const alreadyThere = existingIdx !== -1;
+        const alreadyThere = sessionsIndex.some(function(s){ return s.id === session.id; });
         if(alreadyThere){
           const keep = confirm(
             "Une séance existe déjà pour \"" + (session.plateau || frDate(session.date) || session.id) +
@@ -2932,19 +2940,49 @@
           );
           if(!keep){ skipped++; continue; }
         }
+        accepted.push(session);
+      }
+
+      // 1) On écrit d'abord sur Firestore et on ATTEND la réponse. Avant, l'écriture
+      //    n'était pas attendue : si Firestore la refusait, la séance apparaissait
+      //    une seconde (écriture locale optimiste) puis disparaissait quand
+      //    l'abonnement temps réel remplaçait la liste par celle du serveur.
+      //    Hors ligne, la réponse n'arrive jamais : on ne bloque pas au-delà de 8 s.
+      const results = await Promise.all(accepted.map(function(session){
+        return Promise.race([
+          pushSessionToFirestore(session),
+          new Promise(function(resolve){ setTimeout(function(){ resolve({ ok: true, pending: true }); }, 8000); })
+        ]);
+      }));
+
+      // 2) Cache local + index uniquement pour les séances acceptées.
+      let imported = 0;
+      const failed = [];
+      for(let i = 0; i < accepted.length; i++){
+        const session = accepted[i];
+        const res = results[i];
+        if(!res.ok){ failed.push({ session: session, res: res }); continue; }
         await storageAdapter.set(sessionKey(session.id), JSON.stringify(session));
-        pushSessionToFirestore(session);
         const summary = { id: session.id, date: session.date, plateau: session.plateau, lieu: session.lieu, updatedAt: session.updatedAt || Date.now(), closed: !!session.closed };
-        if(alreadyThere){
-          sessionsIndex[existingIdx] = summary;
-        }else{
-          sessionsIndex.unshift(summary);
-        }
+        const idx = sessionsIndex.findIndex(function(s){ return s.id === session.id; });
+        if(idx !== -1){ sessionsIndex[idx] = summary; } else { sessionsIndex.unshift(summary); }
         imported++;
       }
       await saveIndex();
       render();
-      alert(imported + " séance(s) importée(s)" + (skipped ? ", " + skipped + " ignorée(s)." : "."));
+
+      let msg = imported + " séance(s) importée(s)" + (skipped ? ", " + skipped + " ignorée(s)." : ".");
+      if(failed.length){
+        const denied = failed.some(function(f){ return f.res.code === "permission-denied"; });
+        msg += "\n\n" + failed.length + " séance(s) REFUSÉE(S) par le serveur :\n" +
+          failed.map(function(f){ return "• " + (f.session.plateau || "(sans plateau)") + " du " + (frDate(f.session.date) || "?"); }).join("\n");
+        if(denied){
+          msg += "\n\nMotif : permission refusée (règles Firestore). Cela arrive quand une séance portant le même identifiant existe déjà sur le serveur sans être rattachée à votre club (champ clubId absent ou différent). Corrigez le champ clubId de ces documents dans la console Firestore, ou supprimez-les, puis relancez l'import.";
+        }else{
+          msg += "\n\nMotif : " + (failed[0].res.code || failed[0].res.message || "erreur inconnue") + ".";
+        }
+      }
+      alert(msg);
     }catch(e){
       console.error("Import error:", e);
       alert("Impossible de lire ce fichier. Vérifiez qu'il s'agit bien d'une sauvegarde exportée depuis cette application.");
