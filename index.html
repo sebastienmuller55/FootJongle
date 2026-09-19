@@ -25,7 +25,7 @@
     color:var(--ink);
     max-width:760px;
     margin:0 auto;
-    padding:0 0 calc(84px + env(safe-area-inset-bottom, 0px)) 0;
+    padding:0 0 32px 0;
   }
   .jg-hero{
     position:relative;
@@ -218,21 +218,6 @@
     font-size:15px;
     cursor:pointer;
   }
-  .jg-session-card .dup{
-    border:none;
-    background:#eef2fa;
-    color:var(--navy);
-    border-radius:8px;
-    width:34px;
-    height:34px;
-    flex-shrink:0;
-    cursor:pointer;
-    display:flex;
-    align-items:center;
-    justify-content:center;
-  }
-  .jg-session-card .dup:focus-visible,
-  .jg-session-card .del:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
   .jg-empty{
     text-align:center;
     color:#9a9484;
@@ -319,44 +304,6 @@
     background:#faf9f5;
     border-bottom:1px solid var(--line);
   }
-  .jg-namewrap{min-width:0;}
-  .jg-hint{
-    font-size:11px;
-    line-height:1.3;
-    color:#8b8676;
-    margin:3px 2px 0 2px;
-  }
-  .jg-hint:empty{display:none;}
-  .jg-hint b{color:var(--navy);}
-  .jg-hint .rec b{color:#8a6410;}
-  .jg-bottomnav{
-    position:fixed;
-    left:0; right:0; bottom:0;
-    z-index:50;
-    background:#fff;
-    border-top:1px solid var(--line);
-    box-shadow:0 -2px 10px rgba(0,0,0,0.07);
-    padding-bottom:env(safe-area-inset-bottom, 0px);
-  }
-  .jg-bottomnav-inner{display:flex; max-width:760px; margin:0 auto;}
-  .jg-nav-btn{
-    flex:1;
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap:2px;
-    padding:8px 6px 7px 6px;
-    border:none;
-    border-top:3px solid transparent;
-    background:none;
-    font-size:11.5px;
-    font-weight:700;
-    color:#8b8676;
-    cursor:pointer;
-  }
-  .jg-nav-btn .ico{font-size:19px; line-height:1;}
-  .jg-nav-btn.active{color:var(--navy); border-top-color:var(--gold);}
-  .jg-nav-btn:focus-visible{outline:2px solid var(--gold); outline-offset:-3px;}
   .jg-namecell{display:flex; align-items:center; gap:6px; min-width:0;}
   .jg-namecell input, .jg-namecell select{flex:1; min-width:0;}
   .jg-row select{
@@ -385,9 +332,9 @@
 
   .jg-row{
     display:grid;
-    grid-template-columns:34px 1fr 78px;
+    grid-template-columns:26px minmax(0,1fr) 64px 58px;
     align-items:center;
-    gap:8px;
+    gap:6px;
     padding:7px 12px;
     border-bottom:1px solid var(--line);
   }
@@ -418,8 +365,8 @@
   .jg-row input:focus{outline:2px solid var(--gold); outline-offset:0; border-color:var(--gold);}
   .col-labels{
     display:grid;
-    grid-template-columns:34px 1fr 78px;
-    gap:8px;
+    grid-template-columns:26px minmax(0,1fr) 64px 58px;
+    gap:6px;
     padding:6px 12px;
     font-size:10.5px;
     font-weight:700;
@@ -596,6 +543,7 @@
     z-index:2000;
     text-align:center;
     max-width:88%;
+    white-space:pre-line;
     animation:jgToastIn .25s ease;
   }
   @keyframes jgToastIn{
@@ -641,6 +589,123 @@
     margin-top:8px;
     min-height:16px;
   }
+
+  /* ---- v1.7 : saisie rapide, absent, verrouillage, paliers ---- */
+  .col-labels span:nth-child(3), .col-labels span:nth-child(4){text-align:center;}
+  .jg-row.absent{background:#faf4f4;}
+  .jg-row.absent .num{color:#c9a4a0;}
+  .jg-row.absent input[type="text"], .jg-row.absent select{opacity:.6;}
+  .jg-abs-btn{
+    border:1px solid var(--line);
+    background:#fff;
+    color:#8b8676;
+    border-radius:7px;
+    padding:8px 0;
+    font-size:10.5px;
+    font-weight:800;
+    cursor:pointer;
+    width:100%;
+  }
+  .jg-abs-btn.on{background:#a4453f; color:#fff; border-color:#a4453f;}
+  .jg-abs-btn:disabled{opacity:.5; cursor:default;}
+  .jg-scorewrap{position:relative;}
+  .jg-score:disabled{background:#f3efe7; color:#a39d8a;}
+  .jg-star{
+    position:absolute;
+    top:-8px;
+    right:-5px;
+    font-size:16px;
+    line-height:1;
+    pointer-events:none;
+    text-shadow:-1px 0 #fff, 1px 0 #fff, 0 -1px #fff, 0 1px #fff;
+  }
+  .jg-star-i{font-size:1.05em;}
+
+  .jg-lockbar{
+    display:none;
+    align-items:center;
+    gap:10px;
+    margin:14px 14px 0 14px;
+    padding:10px 12px;
+    background:#fff7e0;
+    border:1px solid #ecd58a;
+    border-radius:10px;
+    font-size:12.5px;
+    font-weight:700;
+    color:#6d5a1a;
+  }
+  .jg-lockbar.show{display:flex;}
+  .jg-lockbar span{flex:1;}
+  .jg-lockbar button{
+    border:none;
+    background:var(--navy);
+    color:#fff;
+    border-radius:8px;
+    padding:8px 12px;
+    font-weight:800;
+    font-size:12.5px;
+    cursor:pointer;
+  }
+  .jg-panel.locked input:disabled, .jg-panel.locked select:disabled{
+    color:var(--ink);
+    -webkit-text-fill-color:var(--ink);
+    opacity:1;
+    background:#f7f5ee;
+  }
+  .jg-panel.locked .jg-panel-head input:disabled{
+    color:#fff;
+    -webkit-text-fill-color:#fff;
+    background:rgba(255,255,255,0.08);
+  }
+  .jg-panel.locked .jg-abs-btn:disabled{opacity:.6;}
+  .jg-meta input:disabled{opacity:.75;}
+  .jg-btn.lock{background:var(--navy); color:#fff;}
+  .jg-btn.outline{background:#fff; color:var(--navy); border:1.5px solid var(--gold);}
+  .jg-btn:disabled{opacity:.45; cursor:default;}
+
+  .jg-nextbar{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    z-index:1500;
+    display:none;
+    justify-content:center;
+    pointer-events:none;
+  }
+  .jg-nextbar.show{display:flex;}
+  .jg-nextbar-in{
+    pointer-events:auto;
+    width:100%;
+    max-width:900px;
+    background:var(--navy);
+    color:#fff;
+    display:flex;
+    align-items:center;
+    gap:8px;
+    padding:8px 10px;
+    box-shadow:0 -3px 12px rgba(0,0,0,0.25);
+  }
+  .jg-nextbar .who{flex:1; min-width:0; font-weight:800; font-size:13px; line-height:1.25;}
+  .jg-nextbar .who span{display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+  .jg-nextbar .who small{display:block; font-weight:600; color:#b9c3dd; font-size:10.5px;}
+  .jg-nextbar button{border:none; border-radius:9px; font-weight:800; font-size:14px; padding:11px 16px; cursor:pointer;}
+  .jg-nb-abs{background:rgba(255,255,255,0.14); color:#fff;}
+  .jg-nb-next{background:var(--gold); color:var(--navy-deep);}
+
+  /* ---- Bilan de séance / partage ---- */
+  .jg-modal.wide{max-width:520px; max-height:88vh;}
+  .jg-recap-sec{margin:0 0 14px 0;}
+  .jg-recap-h{font-size:12px; font-weight:800; color:#847f6f; margin-bottom:6px;}
+  .jg-recap-card{background:#faf9f5; border:1px solid var(--line); border-radius:10px; padding:6px 11px; font-size:13px;}
+  .jg-recap-line{display:flex; justify-content:space-between; align-items:baseline; gap:8px; padding:6px 0; border-bottom:1px solid var(--line);}
+  .jg-recap-line:last-child{border-bottom:none;}
+  .jg-recap-line b{color:var(--navy);}
+  .jg-recap-line small{color:#a89b70; font-weight:600;}
+  .jg-recap-delta{font-weight:800; color:var(--t2); white-space:nowrap;}
+  .jg-chip{display:inline-block; border-radius:999px; padding:4px 10px; font-size:12px; font-weight:800; background:#fff; border:1px solid var(--line); margin:0 5px 5px 0; color:var(--navy);}
+  .jg-recap-opt{display:flex; align-items:center; gap:8px; font-size:12.5px; margin:4px 0 8px 0; color:#4a463c;}
+  .jg-recap-text{width:100%; min-height:190px; border:1px solid var(--line); border-radius:9px; padding:9px; font-size:12.5px; font-family:inherit; line-height:1.45; resize:vertical; background:#fdfdfb; color:var(--ink);}
+  .jg-recap-img{width:100%; height:auto; border:1px solid var(--line); border-radius:9px; display:block; margin-top:8px; min-height:60px; background:#f2f0e8;}
+  .jg-recap-btns{display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:10px 0 0 0;}
 
   /* ---- Footer / Changelog ---- */
   .jg-footer{
@@ -737,7 +802,6 @@
      (le CSS ci-dessus est la base mobile-first)
      ══════════════════════════════════════════════ */
   @media (min-width:640px){
-    .jg-bottomnav-inner{ max-width:900px; }
     .jg-root{ max-width:900px; }
     .jg-list-wrap{ padding:20px 22px 0 22px; }
     #jgSessionList{
@@ -752,7 +816,6 @@
   }
 
   @media (min-width:1024px){
-    .jg-bottomnav-inner{ max-width:1100px; }
     .jg-root{ max-width:1100px; }
     #jgSessionList{ grid-template-columns:1fr 1fr 1fr; }
     .jg-kpi-grid{ grid-template-columns:repeat(4, 1fr); }
@@ -792,6 +855,7 @@
   <div id="jgDashboardView" class="jg-dash-wrap" style="display:none;"></div>
 
   <div id="jgEditorView" style="display:none;">
+    <div class="jg-lockbar" id="jgLockBar"><span>🔒 Séance terminée : en lecture seule.</span><button type="button" id="jgReopenBtn">Rouvrir</button></div>
     <div class="jg-tabs" id="jgTabs"></div>
     <div id="jgPanels"></div>
 
@@ -811,6 +875,11 @@
     <div class="jg-io-note" style="margin:-6px 14px 4px 14px;">Colonnes reconnues : Equipe;Joueur;Score (Equipe et Score facultatifs — sans colonne Equipe, les joueurs remplissent les équipes dans l'ordre, 12 par équipe).</div>
 
     <div class="jg-actions">
+      <button class="jg-btn outline" id="jgRecapBtn">📋 Bilan &amp; partage</button>
+      <button class="jg-btn lock" id="jgCloseBtn">🔒 Terminer la séance</button>
+    </div>
+
+    <div class="jg-actions">
       <button class="jg-btn ghost" id="jgReset">Vider les scores</button>
       <button class="jg-btn primary" id="jgExport">Exporter en PDF</button>
     </div>
@@ -824,19 +893,29 @@
   </div>
 </div>
 
-<nav class="jg-bottomnav" id="jgBottomNav" aria-label="Navigation principale">
-  <div class="jg-bottomnav-inner">
-    <button type="button" class="jg-nav-btn active" id="jgNavList"><span class="ico" aria-hidden="true">📋</span><span>Séances</span></button>
-    <button type="button" class="jg-nav-btn" id="jgNavDash"><span class="ico" aria-hidden="true">📊</span><span>Tableau de bord</span></button>
-  </div>
-</nav>
-
 <div class="jg-modal-bg" id="jgChangelogModalBg">
   <div class="jg-modal">
     <button class="jg-modal-close" id="jgChangelogClose" title="Fermer">✕</button>
     <h2>FootJongle — Historique des versions</h2>
     <div class="jg-modal-sub">Ce qui a changé dans l'application</div>
     <div id="jgChangelogList"></div>
+  </div>
+</div>
+
+<div class="jg-nextbar" id="jgNextBar">
+  <div class="jg-nextbar-in">
+    <div class="who" id="jgNextWho"></div>
+    <button type="button" class="jg-nb-abs" id="jgNextAbs">Absent</button>
+    <button type="button" class="jg-nb-next" id="jgNextBtn">Suivant ›</button>
+  </div>
+</div>
+
+<div class="jg-modal-bg" id="jgRecapModalBg">
+  <div class="jg-modal wide">
+    <button class="jg-modal-close" id="jgRecapClose" title="Fermer">✕</button>
+    <h2>Bilan de la séance</h2>
+    <div class="jg-modal-sub" id="jgRecapSub"></div>
+    <div id="jgRecapBody"></div>
   </div>
 </div>
 
@@ -851,10 +930,14 @@
     {
       version: "1.7", date: "19/09/2026",
       changes: [
-        "Nouvelle barre de navigation fixe en bas de l'écran (Séances / Tableau de bord), accessible depuis la liste, le tableau de bord et l'édition d'une séance.",
-        "Nouveau bouton « Dupliquer » sur chaque séance : la copie reprend le lieu et les joueurs de chaque équipe, avec la date du jour et tous les scores remis à zéro.",
-        "En saisie, le dernier score et le record de chaque joueur (séances précédentes) s'affichent sous son nom.",
-        "Correction : quitter une séance moins d'une demi-seconde après une modification n'annule plus l'enregistrement."
+        "Saisie en plateau : bouton « Absent » sur chaque joueur. Un absent n'est plus confondu avec un score oublié, et le taux de présence du tableau de bord se calcule maintenant sur les joueurs inscrits (présents / inscrits).",
+        "Saisie plus rapide : clavier numérique dès l'appui sur le score, barre « Suivant / Absent » au-dessus du clavier, et touche Entrée pour passer au joueur suivant (puis à l'équipe suivante).",
+        "Nouveau bouton « Terminer la séance » : la séance est verrouillée (lecture seule) pour éviter toute modification par erreur, et peut être rouverte à tout moment. Les séances terminées sont marquées 🔒 dans la liste.",
+        "Paliers : étoiles ★ à 10, 25, 50 et 100 jongles (bronze, argent, or, diamant) dans la saisie, le top 5 et un nouveau bloc « Paliers atteints ». Un message de félicitations s'affiche quand un joueur franchit un cap.",
+        "Bilan de séance : le plus progressé du plateau (par rapport à la séance précédente), le meilleur score et les nouveaux paliers. Nouveau bloc « Plus progressés » dans le tableau de bord.",
+        "Partage : résumé CAPA 1 / CAPA 2 prêt à envoyer en texte (WhatsApp, copier) ou en image, avec option « prénom + initiale » pour les groupes de parents.",
+        "Nouveau : fiche individuelle d'un joueur en PDF (courbe, record, paliers, historique avec absences), depuis le bloc « Évolution d'un joueur ».",
+        "Correction : l'alerte « Nouveau record » ne se redéclenche plus quand on repasse sur un score sans le modifier, et ne prend plus la séance en cours comme référence."
       ]
     },
     {
@@ -948,6 +1031,42 @@
     {main:[106,63,158], dark:[76,44,114], name:"ÉQUIPE 4"}
   ];
   const PLAYERS_PER_TEAM = 12;
+
+  // ---- Paliers de jongles (étoiles) ----
+  const MILESTONES = [
+    { v: 10,  name: "Bronze",  color: "#b8753a", rgb: [184,117,58] },
+    { v: 25,  name: "Argent",  color: "#8e99a4", rgb: [142,153,164] },
+    { v: 50,  name: "Or",      color: "#c9971f", rgb: [201,151,31] },
+    { v: 100, name: "Diamant", color: "#2aa8d8", rgb: [42,168,216] }
+  ];
+  function milestoneFor(score){
+    const n = Number(score);
+    if(score === "" || score === null || score === undefined || isNaN(n)) return null;
+    let r = null;
+    MILESTONES.forEach(function(m){ if(n >= m.v) r = m; });
+    return r;
+  }
+  function starHtml(m){
+    return m ? '<span class="jg-star-i" style="color:' + m.color + ';" title="Palier ' + m.v + '">★</span>' : "";
+  }
+  function pkey(name){ return String(name == null ? "" : name).trim().toLowerCase(); }
+  // Score numérique d'un joueur, ou null (absent, vide, invalide).
+  function scoreNum(p){
+    if(!p || p.absent) return null;
+    if(p.score === "" || p.score === undefined || p.score === null) return null;
+    const n = Number(p.score);
+    return isNaN(n) ? null : n;
+  }
+  // « NICOLAS Thymeo » -> « Thymeo N. » (partage avec les parents). Noms non reconnus : inchangés.
+  function shortName(name){
+    const tokens = String(name || "").trim().split(/\s+/).filter(Boolean);
+    let k = 0;
+    while(k < tokens.length && tokens[k] === tokens[k].toUpperCase() && tokens[k] !== tokens[k].toLowerCase()) k++;
+    if(k >= 1 && k < tokens.length){
+      return tokens.slice(k).join(" ") + " " + tokens[0].charAt(0) + ".";
+    }
+    return tokens.join(" ");
+  }
 
   // ---- Équipes du club + effectif (source : Licences — Effectif U11 A, saison 2026-27) ----
   // Les équipes 1 et 2 sont toujours CAPA 1 et CAPA 2 et proposent une liste déroulante.
@@ -1083,6 +1202,8 @@
         plateau: session.plateau || "",
         lieu: session.lieu || "",
         teams: session.teams || [],
+        closed: !!session.closed,
+        closedAt: session.closedAt || null,
         updatedAt: Date.now()
       });
     }catch(e){
@@ -1114,9 +1235,11 @@
           plateau: data.plateau || "",
           lieu: data.lieu || "",
           updatedAt: data.updatedAt || Date.now(),
+          closed: !!data.closed,
+          closedAt: data.closedAt || null,
           teams: Array.isArray(data.teams) ? data.teams : []
         };
-        newIndex.push({ id: id, date: fullSession.date, plateau: fullSession.plateau, lieu: fullSession.lieu, updatedAt: fullSession.updatedAt });
+        newIndex.push({ id: id, date: fullSession.date, plateau: fullSession.plateau, lieu: fullSession.lieu, updatedAt: fullSession.updatedAt, closed: fullSession.closed });
         try{ await storageAdapter.set(SESSION_KEY_PREFIX + id, JSON.stringify(fullSession)); }catch(e){ /* ignore cache write errors */ }
       }
       newIndex.sort(function(a, b){
@@ -1166,8 +1289,7 @@
   let view = "list"; // "list" | "editor"
   let activeTeam = 0;
   let saveTimer = null;
-  let playerStats = new Map(); // clé de nom -> {last, lastDate, best, bestDate} sur les AUTRES séances
-  let panelHints = [];         // lignes du panneau actif : {el, player}
+  let dashLatestSession = null;
   let dashboardHistories = new Map(); // lowercase name -> {display, history:[{date,score}]}, refreshed each time the dashboard is opened
 
   const heroEl = document.getElementById("jgHero");
@@ -1215,21 +1337,20 @@
   }
 
   function scheduleSaveSession(){
-    const target = currentSession; // capturé : la séance reste enregistrée même si l'on quitte l'écran avant la fin du délai
-    if(!target) return;
     if(saveTimer) clearTimeout(saveTimer);
     statusEl.textContent = "Enregistrement...";
     saveTimer = setTimeout(async function(){
       try{
-        target.updatedAt = Date.now();
-        await storageAdapter.set(SESSION_KEY_PREFIX + target.id, JSON.stringify(target));
-        pushSessionToFirestore(target);
-        const idxEntry = sessionsIndex.find(function(s){ return s.id === target.id; });
+        currentSession.updatedAt = Date.now();
+        await storageAdapter.set(SESSION_KEY_PREFIX + currentSession.id, JSON.stringify(currentSession));
+        pushSessionToFirestore(currentSession);
+        const idxEntry = sessionsIndex.find(function(s){ return s.id === currentSession.id; });
         if(idxEntry){
-          idxEntry.date = target.date;
-          idxEntry.plateau = target.plateau;
-          idxEntry.lieu = target.lieu;
-          idxEntry.updatedAt = target.updatedAt;
+          idxEntry.date = currentSession.date;
+          idxEntry.plateau = currentSession.plateau;
+          idxEntry.lieu = currentSession.lieu;
+          idxEntry.updatedAt = currentSession.updatedAt;
+          idxEntry.closed = !!currentSession.closed;
         }
         await saveIndex();
         statusEl.textContent = "Enregistré ✓";
@@ -1242,54 +1363,21 @@
   }
 
   function createSession(){
-    startSession({
-      id: makeId(),
+    const id = makeId();
+    const session = {
+      id: id,
       date: todayISO(),
       plateau: "",
       lieu: "",
       updatedAt: Date.now(),
       teams: defaultTeams()
-    });
-  }
-
-  // Duplique une séance : mêmes lieu, plateau et joueurs, date du jour, scores remis à zéro.
-  async function duplicateSession(id, evt){
-    if(evt) evt.stopPropagation();
-    const base = await loadSession(id);
-    if(!base){
-      alert("Impossible de charger cette séance.");
-      return;
-    }
-    const copy = {
-      id: makeId(),
-      date: todayISO(),
-      plateau: base.plateau || "",
-      lieu: base.lieu || "",
-      updatedAt: Date.now(),
-      teams: defaultTeams().map(function(freshTeam, i){
-        const t = base.teams[i];
-        if(!t) return freshTeam;
-        const players = Array.from({length: PLAYERS_PER_TEAM}, function(_, k){
-          const p = (t.players && t.players[k]) || {};
-          return { name: p.name || "", score: "" };
-        });
-        return { name: isClubTeam(i) ? CLUB_TEAMS[i] : (t.name || freshTeam.name), players: players };
-      })
     };
-    startSession(copy);
-    showRecordToast("✅ Séance dupliquée : scores remis à zéro. Vérifiez la date et le plateau.");
-  }
-
-  function startSession(session){
-    const id = session.id;
     sessionsIndex.unshift({ id: id, date: session.date, plateau: session.plateau, lieu: session.lieu, updatedAt: session.updatedAt });
     currentSession = session;
     customRows.clear();
-    playerStats = new Map();
     activeTeam = 0;
     view = "editor";
     render();
-    refreshPlayerStats();
     // Persist in the background so the editor opens instantly even if storage is slow/unavailable.
     (async function(){
       try{
@@ -1311,16 +1399,15 @@
     }
     currentSession = session;
     customRows.clear();
-    playerStats = new Map();
     activeTeam = 0;
     view = "editor";
     render();
-    refreshPlayerStats();
   }
 
   function deleteSession(id, evt){
     if(evt) evt.stopPropagation();
-    if(!confirm("Supprimer définitivement cette séance ?")) return;
+    const delEntry = sessionsIndex.find(function(s){ return s.id === id; });
+    if(!confirm(delEntry && delEntry.closed ? "Cette séance est terminée (verrouillée). La supprimer définitivement ?" : "Supprimer définitivement cette séance ?")) return;
     sessionsIndex = sessionsIndex.filter(function(s){ return s.id !== id; });
     render();
     (async function(){
@@ -1342,8 +1429,6 @@
 
   // ---- Rendering ----
   function render(){
-    document.getElementById("jgNavList").classList.toggle("active", view !== "dashboard");
-    document.getElementById("jgNavDash").classList.toggle("active", view === "dashboard");
     if(view === "list"){
       backBtn.style.display = "none";
       titleEl.textContent = "MES SÉANCES";
@@ -1375,12 +1460,12 @@
       dashboardViewEl.style.display = "none";
       renderTabs();
       renderPanel();
+      updateLockUI();
     }
   }
 
   function openDashboard(){
     view = "dashboard";
-    currentSession = null;
     render();
   }
 
@@ -1399,6 +1484,7 @@
 
     let totalPlayerSlots = 0;
     let filledNameSlots = 0;
+    let absentSlots = 0;
     let scoredSlots = 0;
     let scoreSum = 0;
     const allScoreValues = [];
@@ -1408,16 +1494,23 @@
 
     fullSessions.forEach(function(session){
       if(session.date && (!lastDate || session.date > lastDate)) lastDate = session.date;
-      session.teams.forEach(function(team){
+      session.teams.forEach(function(team, tIdx){
         team.players.forEach(function(player){
           totalPlayerSlots++;
           const name = (player.name || "").trim();
           if(name) filledNameSlots++;
+          if(name && player.absent) absentSlots++;
           const num = Number(player.score);
-          const hasScore = name && player.score !== "" && player.score !== undefined && !isNaN(num);
+          const hasScore = name && !player.absent && player.score !== "" && player.score !== undefined && !isNaN(num);
           const key = name.toLowerCase();
           if(!namesSeen.has(key) && name){
-            namesSeen.set(key, { display: name, best: null, bestDate: null, bestTeam: null, history: [] });
+            namesSeen.set(key, { display: name, best: null, bestDate: null, bestTeam: null, history: [], appearances: [] });
+          }
+          if(name){
+            namesSeen.get(key).appearances.push({
+              date: session.date || "", plateau: session.plateau || "", lieu: session.lieu || "",
+              team: teamLabel(team, tIdx), score: hasScore ? num : null, absent: !!player.absent
+            });
           }
           if(hasScore){
             scoredSlots++;
@@ -1439,7 +1532,8 @@
     });
 
     const avgScore = scoredSlots > 0 ? (scoreSum / scoredSlots) : null;
-    const participationRate = totalPlayerSlots > 0 ? Math.round((filledNameSlots / totalPlayerSlots) * 100) : 0;
+    const presentCount = filledNameSlots - absentSlots;
+    const participationRate = filledNameSlots > 0 ? Math.round((presentCount / filledNameSlots) * 100) : 0;
     const uniquePlayers = namesSeen.size;
 
     // Médiane
@@ -1507,7 +1601,7 @@
       "Progression moyenne",
       progressionDeltas.length ? (progressionDeltas.length + " joueur(s) avec ≥ 2 séances notées") : "Pas encore assez de données"
     ));
-    cards.push(kpiCard(participationRate + '<span class="unit">%</span>', "Taux de présence", filledNameSlots + " / " + totalPlayerSlots + " emplacements"));
+    cards.push(kpiCard(participationRate + '<span class="unit">%</span>', "Taux de présence", presentCount + " présent(s) sur " + filledNameSlots + " inscrit(s) · " + absentSlots + " absent(s)"));
     cards.push(kpiCard(lastDate ? frDate(lastDate) : "–", "Dernière séance", "", true));
 
     let html = '<div class="jg-kpi-grid">' + cards.join("") + '</div>';
@@ -1537,11 +1631,50 @@
         html += '<div class="jg-top-row">' +
           '<span class="jg-top-rank">' + (i + 1) + '</span>' +
           '<span class="jg-top-name">' + escapeHtml(p.display) + '<span class="team">' + escapeHtml(p.bestTeam || "") + ' · ' + frDate(p.bestDate) + '</span></span>' +
-          '<span class="jg-top-score">' + p.best + '</span>' +
+          '<span class="jg-top-score">' + starHtml(milestoneFor(p.best)) + ' ' + p.best + '</span>' +
         '</div>';
       });
     }
     html += '</div>';
+
+    // ⭐ Paliers atteints (meilleur score de chaque joueur)
+    html += '<div class="jg-top-box" style="margin-top:12px;"><div class="jg-top-head">⭐ PALIERS ATTEINTS</div>';
+    const allPlayersArr = Array.from(namesSeen.values());
+    MILESTONES.slice().reverse().forEach(function(m){
+      const who = allPlayersArr.filter(function(p){ return p.best !== null && p.best >= m.v; })
+        .map(function(p){ return p.display; })
+        .sort(function(a, b){ return a.localeCompare(b, "fr"); });
+      const shown = who.slice(0, 8).join(", ") + (who.length > 8 ? " … +" + (who.length - 8) : "");
+      html += '<div class="jg-top-row">' +
+        '<span style="color:' + m.color + ';font-size:18px;line-height:1;">★</span>' +
+        '<span class="jg-top-name" style="white-space:normal;">' + m.v + ' jongles · ' + m.name +
+          '<span class="team" style="text-transform:none;white-space:normal;">' + (who.length ? escapeHtml(shown) : 'Personne pour l\'instant') + '</span></span>' +
+        '<span class="jg-top-score">' + who.length + '</span>' +
+      '</div>';
+    });
+    html += '</div>';
+
+    // 🚀 Plus progressés de la dernière séance
+    dashLatestSession = fullSessions.slice().sort(function(a, b){
+      return (b.date || "").localeCompare(a.date || "") || ((b.updatedAt || 0) - (a.updatedAt || 0));
+    })[0] || null;
+    if(dashLatestSession){
+      const rc = computeRecap(dashLatestSession, fullSessions);
+      html += '<div class="jg-top-box" style="margin-top:12px;"><div class="jg-top-head">🚀 PLUS PROGRESSÉS · ' + escapeHtml(sessionLabel(dashLatestSession)) + '</div>';
+      if(rc.progress.length === 0){
+        html += '<div class="jg-top-row"><span></span><span style="color:#a89b70;">Pas encore de progression à afficher (il faut un score à une séance précédente).</span><span></span></div>';
+      }else{
+        rc.progress.slice(0, 3).forEach(function(p, i){
+          html += '<div class="jg-top-row">' +
+            '<span class="jg-top-rank">' + (i + 1) + '</span>' +
+            '<span class="jg-top-name">' + escapeHtml(p.name) + '<span class="team">' + escapeHtml(p.team) + ' · ' + p.prev + ' → ' + p.score + '</span></span>' +
+            '<span class="jg-top-score">+' + p.delta + '</span>' +
+          '</div>';
+        });
+      }
+      html += '<div style="padding:10px 14px 12px 14px;"><button type="button" class="jg-io-btn" id="jgDashRecapBtn" style="width:100%;">📤 Bilan &amp; partage de cette séance</button></div>';
+      html += '</div>';
+    }
 
     dashboardHistories = namesSeen;
 
@@ -1564,6 +1697,7 @@
         '</select>' +
       '</div>' +
       '<div id="jgPlayerChartWrap"></div>' +
+      '<div style="padding:0 14px 14px 14px;"><button type="button" class="jg-io-btn" id="jgPlayerSheetBtn" style="width:100%;">📄 Fiche PDF du joueur</button></div>' +
       '</div>';
     }
 
@@ -1573,7 +1707,11 @@
     if(selectEl){
       selectEl.addEventListener("change", function(){ renderPlayerChart(this.value); });
       renderPlayerChart(selectEl.value);
+      const sheetBtn = document.getElementById("jgPlayerSheetBtn");
+      if(sheetBtn) sheetBtn.addEventListener("click", function(){ exportPlayerSheet(selectEl.value); });
     }
+    const dashRecapBtn = document.getElementById("jgDashRecapBtn");
+    if(dashRecapBtn) dashRecapBtn.addEventListener("click", function(){ if(dashLatestSession) openRecap(dashLatestSession); });
   }
 
   function frDateShort(iso){
@@ -1694,42 +1832,46 @@
   }
 
   function showRecordToast(msg){
+    document.querySelectorAll(".jg-record-toast").forEach(function(old){ old.remove(); });
     const el = document.createElement("div");
     el.className = "jg-record-toast";
     el.textContent = msg;
     document.body.appendChild(el);
-    setTimeout(function(){ el.remove(); }, 2600);
+    setTimeout(function(){ el.remove(); }, msg.indexOf("\n") !== -1 ? 3600 : 2600);
   }
 
-  // Compares a just-entered score against the player's best score across all
-  // previously saved sessions, and shows a small congratulation toast if it's
-  // a new personal record. Runs in the background (on blur) so typing stays snappy.
-  async function checkPersonalRecord(playerName, newScoreNum){
+  // Compare un score qui vient d'être saisi au meilleur score précédent du joueur
+  // (séances enregistrées, hors séance en cours) : record personnel et paliers franchis.
+  async function checkScoreAchievements(playerName, newScoreNum){
     try{
-      const key = playerName.trim().toLowerCase();
+      const key = pkey(playerName);
       const fullSessions = (await Promise.all(
         sessionsIndex.map(function(entry){ return loadSession(entry.id); })
       )).filter(Boolean);
 
       let previousBest = null;
       fullSessions.forEach(function(session){
+        if(currentSession && session.id === currentSession.id) return;
         session.teams.forEach(function(team){
           team.players.forEach(function(player){
-            const nm = (player.name || "").trim().toLowerCase();
-            if(nm !== key) return;
-            const v = Number(player.score);
-            if(player.score !== "" && player.score !== undefined && !isNaN(v)){
-              if(previousBest === null || v > previousBest) previousBest = v;
-            }
+            if(pkey(player.name) !== key) return;
+            const v = scoreNum(player);
+            if(v !== null && (previousBest === null || v > previousBest)) previousBest = v;
           });
         });
       });
 
+      const lines = [];
       if(previousBest === null || newScoreNum > previousBest){
-        showRecordToast("🔥 Nouveau record personnel pour " + playerName + " : " + newScoreNum + " !");
+        lines.push("🔥 Nouveau record personnel pour " + playerName + " : " + newScoreNum + " !");
       }
+      const base = previousBest === null ? -1 : previousBest;
+      let crossed = null;
+      MILESTONES.forEach(function(m){ if(base < m.v && m.v <= newScoreNum) crossed = m; });
+      if(crossed) lines.push("⭐ Palier " + crossed.v + " franchi (" + crossed.name + ") !");
+      if(lines.length) showRecordToast(lines.join("\n"));
     }catch(e){
-      console.error("Personal record check error:", e);
+      console.error("Achievements check error:", e);
     }
   }
 
@@ -1752,28 +1894,18 @@
       info.className = "info";
       const title = document.createElement("div");
       title.className = "title";
-      title.textContent = s.plateau || ("Séance du " + frDate(s.date));
+      title.textContent = (s.closed ? "🔒 " : "") + (s.plateau || ("Séance du " + frDate(s.date)));
       const meta = document.createElement("div");
       meta.className = "meta";
       const metaParts = [frDate(s.date), s.lieu].filter(Boolean);
       meta.textContent = metaParts.join(" · ");
       info.appendChild(title);
       info.appendChild(meta);
-      const dup = document.createElement("button");
-      dup.type = "button";
-      dup.className = "dup";
-      dup.title = "Dupliquer cette séance";
-      dup.setAttribute("aria-label", "Dupliquer la séance");
-      dup.innerHTML = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
-      dup.addEventListener("click", function(e){ duplicateSession(s.id, e); });
       const del = document.createElement("button");
       del.className = "del";
-      del.title = "Supprimer cette séance";
-      del.setAttribute("aria-label", "Supprimer la séance");
       del.textContent = "✕";
       del.addEventListener("click", function(e){ deleteSession(s.id, e); });
       card.appendChild(info);
-      card.appendChild(dup);
       card.appendChild(del);
       card.addEventListener("click", function(){ openSession(s.id); });
       sessionListEl.appendChild(card);
@@ -1795,6 +1927,7 @@
       input.type = f.type;
       input.placeholder = f.placeholder;
       input.value = currentSession[f.key] || "";
+      input.disabled = isLocked();
       input.addEventListener("input", function(e){
         currentSession[f.key] = e.target.value;
         scheduleSaveSession();
@@ -1845,66 +1978,6 @@
       });
     });
     return taken;
-  }
-
-  // Clé de rapprochement des noms (orthographe officielle si joueur de l'effectif, sinon minuscules).
-  function statKey(name){
-    const nm = String(name || "").trim();
-    if(!nm) return "";
-    return canonicalRosterName(nm) ? "r:" + rosterKey(nm) : "t:" + nm.toLowerCase();
-  }
-
-  // Calcule, pour chaque joueur, son dernier score et son record sur les autres séances.
-  async function refreshPlayerStats(){
-    const sid = currentSession ? currentSession.id : null;
-    if(!sid) return;
-    try{
-      const others = (await Promise.all(
-        sessionsIndex.filter(function(e){ return e.id !== sid; }).map(function(e){ return loadSession(e.id); })
-      )).filter(Boolean);
-      others.sort(function(a, b){
-        return (a.date || "").localeCompare(b.date || "") || ((a.updatedAt || 0) - (b.updatedAt || 0));
-      });
-      const map = new Map();
-      others.forEach(function(session){
-        session.teams.forEach(function(team){
-          team.players.forEach(function(p){
-            const key = statKey(p.name);
-            const num = Number(p.score);
-            if(!key || p.score === "" || p.score === undefined || p.score === null || isNaN(num)) return;
-            const st = map.get(key) || { last: null, lastDate: "", best: null, bestDate: "" };
-            st.last = num;
-            st.lastDate = session.date || "";
-            if(st.best === null || num > st.best){ st.best = num; st.bestDate = session.date || ""; }
-            map.set(key, st);
-          });
-        });
-      });
-      if(!currentSession || currentSession.id !== sid) return; // l'utilisateur a changé d'écran entre-temps
-      playerStats = map;
-      panelHints.forEach(function(h){ fillHint(h.el, h.player.name); });
-    }catch(e){
-      console.error("Player stats error:", e);
-    }
-  }
-
-  function fillHint(el, name){
-    el.textContent = "";
-    const st = playerStats.get(statKey(name));
-    if(!st) return;
-    function part(label, value, date, cls){
-      const span = document.createElement("span");
-      if(cls) span.className = cls;
-      if(date) span.title = "Séance du " + frDate(date);
-      span.appendChild(document.createTextNode(label + " "));
-      const b = document.createElement("b");
-      b.textContent = String(value);
-      span.appendChild(b);
-      return span;
-    }
-    el.appendChild(part("Dernier", st.last, st.lastDate));
-    el.appendChild(document.createTextNode(" · "));
-    el.appendChild(part("Record", st.best, st.bestDate, "rec"));
   }
 
   function buildFreeNameField(player, placeholder){
@@ -1979,10 +2052,10 @@
   }
 
   function renderPanel(){
+    hideNextBarNow();
     const migrated = syncRosterNames();
     const taken = takenRosterKeys();
     panelsEl.innerHTML = "";
-    panelHints = [];
     const team = currentSession.teams[activeTeam];
     const panel = document.createElement("div");
     panel.className = "jg-panel";
@@ -2024,7 +2097,7 @@
 
     const colLabels = document.createElement("div");
     colLabels.className = "col-labels";
-    colLabels.innerHTML = "<span>N°</span><span>Joueur</span><span>Score</span>";
+    colLabels.innerHTML = "<span>N°</span><span>Joueur</span><span>Score</span><span>Abs.</span>";
     panel.appendChild(colLabels);
 
     team.players.forEach(function(player, idx){
@@ -2037,53 +2110,107 @@
       row.appendChild(num);
 
       row.dataset.slot = idx;
-      const nameWrap = document.createElement("div");
-      nameWrap.className = "jg-namewrap";
-      const nameCell = clubTeam ? buildRosterCell(activeTeam, idx, player, taken) : buildFreeNameField(player);
-      nameWrap.appendChild(nameCell);
-      const hint = document.createElement("div");
-      hint.className = "jg-hint";
-      fillHint(hint, player.name);
-      panelHints.push({ el: hint, player: player });
-      nameWrap.appendChild(hint);
-      row.appendChild(nameWrap);
-      const freeInput = nameCell.tagName === "INPUT" ? nameCell : nameCell.querySelector('input[type="text"]');
-      if(freeInput) freeInput.addEventListener("change", function(){ fillHint(hint, player.name); });
+      row.appendChild(clubTeam ? buildRosterCell(activeTeam, idx, player, taken) : buildFreeNameField(player));
 
+      const teamIdx = activeTeam;
+      const scoreWrap = document.createElement("div");
+      scoreWrap.className = "jg-scorewrap";
       const scoreField = document.createElement("input");
       scoreField.type = "number";
+      scoreField.className = "jg-score";
       scoreField.min = "0";
+      scoreField.step = "1";
+      scoreField.setAttribute("inputmode", "numeric");
+      scoreField.setAttribute("enterkeyhint", "next");
+      scoreField.setAttribute("autocomplete", "off");
+      scoreField.setAttribute("aria-label", "Score du joueur n° " + (idx + 1));
       scoreField.placeholder = "-";
       scoreField.value = player.score;
+      scoreWrap.appendChild(scoreField);
+
+      const absBtn = document.createElement("button");
+      absBtn.type = "button";
+      absBtn.className = "jg-abs-btn";
+      absBtn.textContent = "Absent";
+      absBtn.setAttribute("aria-label", "Marquer le joueur n° " + (idx + 1) + " absent");
+
+      function hasScoreValue(){
+        return player.score !== "" && player.score !== undefined && player.score !== null;
+      }
+      function refreshRow(){
+        const on = !!player.absent;
+        row.classList.toggle("absent", on);
+        absBtn.classList.toggle("on", on);
+        absBtn.setAttribute("aria-pressed", on ? "true" : "false");
+        scoreField.disabled = on;
+        scoreField.placeholder = on ? "ABS" : "-";
+        updateStar(scoreWrap, on ? "" : player.score);
+      }
+      function setAbsent(on){
+        if(on){ player.absent = true; player.score = ""; scoreField.value = ""; }
+        else { delete player.absent; }
+        refreshRow();
+        scheduleSaveSession();
+      }
+      // Demande confirmation si un score existe déjà (il serait effacé).
+      function requestAbsent(forceOn){
+        const next = (forceOn === undefined) ? !player.absent : forceOn;
+        if(next && hasScoreValue()){
+          if(!confirm("« " + ((player.name || "").trim() || "Ce joueur") + " » a déjà un score. Le marquer absent effacera ce score. Continuer ?")) return false;
+        }
+        setAbsent(next);
+        return true;
+      }
+      absBtn.addEventListener("click", function(){ requestAbsent(); });
+
+      let focusVal = "";
+      function commitScore(){
+        const v = scoreField.value;
+        const val = Number(v);
+        const pname = (player.name || "").trim();
+        if(v !== "" && v !== focusVal && !isNaN(val) && pname){
+          focusVal = v;
+          checkScoreAchievements(pname, val);
+        }
+      }
+      scoreField.addEventListener("focus", function(){
+        focusVal = scoreField.value;
+        setTimeout(function(){ try{ scoreField.select(); }catch(e){} }, 0);
+        showNextBar({ teamIdx: teamIdx, idx: idx, player: player, commit: commitScore, requestAbsent: requestAbsent }, scoreField);
+      });
       scoreField.addEventListener("input", function(e){
         player.score = e.target.value;
+        updateStar(scoreWrap, player.score);
         scheduleSaveSession();
       });
-      scoreField.addEventListener("blur", function(e){
-        const val = Number(e.target.value);
-        const pname = (player.name || "").trim();
-        if(e.target.value !== "" && !isNaN(val) && pname){
-          checkPersonalRecord(pname, val);
+      scoreField.addEventListener("keydown", function(e){
+        if(e.key === "Enter"){
+          e.preventDefault();
+          commitScore();
+          focusNextScore(teamIdx, idx);
         }
       });
-      row.appendChild(scoreField);
+      scoreField.addEventListener("blur", function(){
+        commitScore();
+        scheduleHideNextBar();
+      });
+
+      row.appendChild(scoreWrap);
+      row.appendChild(absBtn);
+      refreshRow();
 
       panel.appendChild(row);
     });
 
+    if(isLocked()){
+      panel.classList.add("locked");
+      panel.querySelectorAll("input:not([readonly]), select, button").forEach(function(el){ el.disabled = true; });
+    }
     panelsEl.appendChild(panel);
     if(migrated) scheduleSaveSession();
   }
 
   backBtn.addEventListener("click", backToList);
-  document.getElementById("jgNavList").addEventListener("click", function(){
-    if(view !== "list") backToList();
-    window.scrollTo(0, 0);
-  });
-  document.getElementById("jgNavDash").addEventListener("click", function(){
-    if(view !== "dashboard") openDashboard();
-    window.scrollTo(0, 0);
-  });
   document.getElementById("jgNewSession").addEventListener("click", createSession);
   document.getElementById("jgDashboardBtn").addEventListener("click", openDashboard);
 
@@ -2269,7 +2396,9 @@
         }
         const slot = cursors[teamIdx];
         const scoreVal = (rec.scoreRaw !== "" && !isNaN(Number(rec.scoreRaw))) ? rec.scoreRaw : "";
-        newTeams[teamIdx].players[slot] = { name: canonicalRosterName(rec.name) || rec.name, score: scoreVal };
+        const newPlayer = { name: canonicalRosterName(rec.name) || rec.name, score: scoreVal };
+        if(["abs", "absent", "absente"].indexOf(csvNorm(rec.scoreRaw)) !== -1) newPlayer.absent = true;
+        newTeams[teamIdx].players[slot] = newPlayer;
         cursors[teamIdx] = slot + 1;
         importedCount++;
       });
@@ -2315,7 +2444,7 @@
         }
         await storageAdapter.set(SESSION_KEY_PREFIX + session.id, JSON.stringify(session));
         pushSessionToFirestore(session);
-        const summary = { id: session.id, date: session.date, plateau: session.plateau, lieu: session.lieu, updatedAt: session.updatedAt || Date.now() };
+        const summary = { id: session.id, date: session.date, plateau: session.plateau, lieu: session.lieu, updatedAt: session.updatedAt || Date.now(), closed: !!session.closed };
         if(alreadyThere){
           sessionsIndex[existingIdx] = summary;
         }else{
@@ -2333,6 +2462,7 @@
   }
 
   document.getElementById("jgReset").addEventListener("click", function(){
+    if(isLocked()) return;
     if(!confirm("Vider tous les scores et noms de joueurs de cette séance ?")) return;
     currentSession.teams = defaultTeams();
     customRows.clear();
@@ -2345,6 +2475,7 @@
   document.getElementById("jgExport").addEventListener("click", exportPDF);
 
   document.getElementById("jgImportPlayersCSV").addEventListener("click", function(){
+    if(isLocked()){ alert("Séance terminée : rouvrez-la pour importer des joueurs."); return; }
     document.getElementById("jgImportPlayersCSVFile").click();
   });
   document.getElementById("jgImportPlayersCSVFile").addEventListener("change", function(e){
@@ -2430,7 +2561,7 @@
         const y = rowY[rowIdx];
 
         const body = team.players.map(function(p, idx){
-          return [String(idx + 1), p.name || "", p.score !== "" && p.score !== undefined ? String(p.score) : ""];
+          return [String(idx + 1), p.name || "", p.absent ? "ABS" : (p.score !== "" && p.score !== undefined ? String(p.score) : "")];
         });
 
         doc.setFillColor(color.dark[0], color.dark[1], color.dark[2]);
@@ -2504,6 +2635,824 @@
     }catch(e){
       console.error("Erreur export PDF:", e);
       statusEl.textContent = "Erreur lors de l'export PDF";
+    }
+  }
+
+  // ============================================================
+  //  v1.7 — Saisie rapide, verrouillage, bilan, partage, fiche joueur
+  // ============================================================
+
+  // ---- Barre « Suivant / Absent » au-dessus du clavier ----
+  const nextBarEl = document.getElementById("jgNextBar");
+  let nextCtx = null;
+  let nextHideTimer = null;
+
+  function positionNextBar(){
+    const vv = window.visualViewport;
+    if(!vv){ nextBarEl.style.bottom = "0px"; return; }
+    const off = Math.max(0, window.innerHeight - (vv.height + vv.offsetTop));
+    nextBarEl.style.bottom = off + "px";
+  }
+  if(window.visualViewport){
+    window.visualViewport.addEventListener("resize", positionNextBar);
+    window.visualViewport.addEventListener("scroll", positionNextBar);
+  }
+
+  function showNextBar(ctx, field){
+    clearTimeout(nextHideTimer);
+    nextCtx = ctx;
+    const nm = (ctx.player.name || "").trim();
+    const team = currentSession ? teamLabel(currentSession.teams[ctx.teamIdx], ctx.teamIdx) : "";
+    document.getElementById("jgNextWho").innerHTML =
+      '<span>' + escapeHtml(nm || ("Joueur n° " + (ctx.idx + 1))) + '</span>' +
+      '<small>' + escapeHtml(team) + ' · joueur n° ' + (ctx.idx + 1) + '</small>';
+    nextBarEl.classList.add("show");
+    positionNextBar();
+    setTimeout(function(){
+      try{ field.scrollIntoView({ block: "center", behavior: "smooth" }); }catch(e){}
+    }, 250);
+  }
+  function hideNextBarNow(){
+    clearTimeout(nextHideTimer);
+    nextBarEl.classList.remove("show");
+    nextCtx = null;
+  }
+  function scheduleHideNextBar(){
+    clearTimeout(nextHideTimer);
+    nextHideTimer = setTimeout(function(){
+      const a = document.activeElement;
+      if(!(a && a.classList && a.classList.contains("jg-score"))) hideNextBarNow();
+    }, 200);
+  }
+
+  function playerIsEligible(p){ return (p.name || "").trim() !== "" && !p.absent; }
+  function focusScoreAt(idx){
+    const el = panelsEl.querySelector('.jg-row[data-slot="' + idx + '"] .jg-score');
+    if(el && !el.disabled){ el.focus(); return true; }
+    return false;
+  }
+  // Passe au joueur suivant (nommé, non absent), puis à l'équipe suivante.
+  function focusNextScore(teamIdx, idx){
+    if(!currentSession || isLocked()) return;
+    const teams = currentSession.teams;
+    for(let k = idx + 1; k < teams[teamIdx].players.length; k++){
+      if(playerIsEligible(teams[teamIdx].players[k]) && focusScoreAt(k)) return;
+    }
+    for(let t = teamIdx + 1; t < teams.length; t++){
+      const first = teams[t].players.findIndex(playerIsEligible);
+      if(first !== -1){
+        activeTeam = t;
+        renderTabs();
+        renderPanel();
+        if(focusScoreAt(first)) return;
+      }
+    }
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    hideNextBarNow();
+    showRecordToast("✅ Dernier joueur saisi");
+  }
+
+  // Empêche la barre de faire perdre le focus (le clavier reste ouvert).
+  ["jgNextBtn", "jgNextAbs"].forEach(function(id){
+    document.getElementById(id).addEventListener("mousedown", function(e){ e.preventDefault(); });
+  });
+  document.getElementById("jgNextBtn").addEventListener("click", function(){
+    if(!nextCtx) return;
+    const c = nextCtx;
+    c.commit();
+    focusNextScore(c.teamIdx, c.idx);
+  });
+  document.getElementById("jgNextAbs").addEventListener("click", function(){
+    if(!nextCtx) return;
+    const c = nextCtx;
+    if(c.requestAbsent(true)) focusNextScore(c.teamIdx, c.idx);
+  });
+
+  // ---- Étoile de palier à côté du score ----
+  function updateStar(wrap, score){
+    let star = wrap.querySelector(".jg-star");
+    const m = milestoneFor(score);
+    if(!m){ if(star) star.remove(); return; }
+    if(!star){
+      star = document.createElement("span");
+      star.className = "jg-star";
+      wrap.appendChild(star);
+    }
+    star.textContent = "★";
+    star.style.color = m.color;
+    star.title = "Palier " + m.v + " jongles (" + m.name + ")";
+  }
+
+  // ---- Verrouillage de la séance ----
+  function isLocked(){ return !!(currentSession && currentSession.closed); }
+
+  function updateLockUI(){
+    const locked = isLocked();
+    document.getElementById("jgLockBar").classList.toggle("show", locked);
+    document.getElementById("jgCloseBtn").textContent = locked ? "🔓 Rouvrir la séance" : "🔒 Terminer la séance";
+    document.getElementById("jgReset").disabled = locked;
+    document.getElementById("jgImportPlayersCSV").disabled = locked;
+    if(locked) hideNextBarNow();
+  }
+
+  function refreshEditorAfterLockChange(){
+    renderEditorMeta();
+    renderPanel();
+    updateLockUI();
+  }
+
+  function closeSession(){
+    if(!currentSession || isLocked()) return;
+    let missing = 0;
+    currentSession.teams.forEach(function(t){
+      t.players.forEach(function(p){
+        if((p.name || "").trim() && !p.absent && scoreNum(p) === null) missing++;
+      });
+    });
+    let msg = "Terminer la séance ?\n\nElle sera verrouillée pour éviter toute modification par erreur. Vous pourrez la rouvrir à tout moment.";
+    if(missing > 0){
+      msg += "\n\n⚠️ " + missing + " joueur(s) n'ont ni score ni statut « Absent ».";
+    }
+    if(!confirm(msg)) return;
+    if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
+    currentSession.closed = true;
+    currentSession.closedAt = Date.now();
+    scheduleSaveSession();
+    refreshEditorAfterLockChange();
+    openRecap(currentSession);
+  }
+
+  function reopenSession(){
+    if(!currentSession || !isLocked()) return;
+    if(!confirm("Rouvrir cette séance ? Les scores redeviendront modifiables.")) return;
+    currentSession.closed = false;
+    currentSession.closedAt = null;
+    scheduleSaveSession();
+    refreshEditorAfterLockChange();
+  }
+
+  document.getElementById("jgCloseBtn").addEventListener("click", function(){
+    if(isLocked()) reopenSession(); else closeSession();
+  });
+  document.getElementById("jgReopenBtn").addEventListener("click", reopenSession);
+  document.getElementById("jgRecapBtn").addEventListener("click", function(){
+    if(currentSession) openRecap(currentSession);
+  });
+
+  // ---- Bilan de séance ----
+  function sessionLabel(s){ return s.plateau || ("Séance du " + frDate(s.date)); }
+  function dn(name, short){ return short ? shortName(name) : name; }
+
+  async function loadAllSessions(){
+    return (await Promise.all(
+      sessionsIndex.map(function(e){ return loadSession(e.id); })
+    )).filter(Boolean);
+  }
+
+  // Bilan d'une séance pour les équipes du club (CAPA 1 et CAPA 2).
+  // La progression se mesure par rapport au dernier score de la séance précédente du joueur.
+  function computeRecap(session, all){
+    const cur = session.date || "";
+    const prev = new Map();
+    all.forEach(function(s){
+      if(s.id === session.id) return;
+      if((s.date || "") >= cur) return;
+      (s.teams || []).forEach(function(t){
+        (t.players || []).forEach(function(p){
+          const nm = (p.name || "").trim();
+          const v = scoreNum(p);
+          if(!nm || v === null) return;
+          const k = pkey(nm);
+          let e = prev.get(k);
+          if(!e){ e = { best: null, lastScore: null, lastDate: "", lastUpd: 0 }; prev.set(k, e); }
+          if(e.best === null || v > e.best) e.best = v;
+          const d = s.date || "";
+          const u = s.updatedAt || 0;
+          if(e.lastScore === null || d > e.lastDate || (d === e.lastDate && u >= e.lastUpd)){
+            e.lastScore = v; e.lastDate = d; e.lastUpd = u;
+          }
+        });
+      });
+    });
+
+    const teams = [];
+    const scoredAll = [];
+    [0, 1].forEach(function(i){
+      const t = (session.teams || [])[i] || { players: [] };
+      const named = (t.players || []).filter(function(p){ return (p.name || "").trim() !== ""; });
+      const absent = named.filter(function(p){ return p.absent; }).length;
+      const rows = [];
+      named.forEach(function(p){
+        const v = scoreNum(p);
+        if(v === null) return;
+        const pv = prev.get(pkey(p.name));
+        rows.push({ name: p.name.trim(), score: v, team: CLUB_TEAMS[i],
+                    prevLast: pv ? pv.lastScore : null, prevBest: pv ? pv.best : null });
+      });
+      rows.sort(function(a, b){ return (b.score - a.score) || a.name.localeCompare(b.name, "fr"); });
+      let rank = 0;
+      rows.forEach(function(r, k){
+        if(k === 0 || r.score !== rows[k - 1].score) rank = k + 1;
+        r.rank = rank;
+        r.ms = milestoneFor(r.score);
+      });
+      teams.push({ label: CLUB_TEAMS[i], ranking: rows, named: named.length, absent: absent, present: named.length - absent });
+      rows.forEach(function(r){ scoredAll.push(r); });
+    });
+
+    let best = null;
+    scoredAll.forEach(function(r){
+      if(!best || r.score > best.score) best = { score: r.score, rows: [r] };
+      else if(r.score === best.score) best.rows.push(r);
+    });
+
+    const progress = scoredAll
+      .filter(function(r){ return r.prevLast !== null && r.score > r.prevLast; })
+      .map(function(r){ return { name: r.name, team: r.team, prev: r.prevLast, score: r.score, delta: r.score - r.prevLast }; })
+      .sort(function(a, b){ return (b.delta - a.delta) || (b.score - a.score); });
+
+    const milestones = [];
+    scoredAll.forEach(function(r){
+      const pb = r.prevBest === null ? -1 : r.prevBest;
+      let top = null;
+      MILESTONES.forEach(function(m){ if(pb < m.v && m.v <= r.score) top = m; });
+      if(top) milestones.push({ name: r.name, team: r.team, ms: top });
+    });
+    milestones.sort(function(a, b){ return (b.ms.v - a.ms.v) || a.name.localeCompare(b.name, "fr"); });
+
+    return { session: session, teams: teams, best: best, progress: progress, milestones: milestones, hasScores: scoredAll.length > 0 };
+  }
+
+  function progressTies(rc){
+    if(!rc.progress.length) return [];
+    return rc.progress.filter(function(p){ return p.delta === rc.progress[0].delta; });
+  }
+
+  function buildShareText(rc, short){
+    const s = rc.session;
+    const L = [];
+    L.push("⚽ Défi Jonglerie — " + (s.plateau || "Séance"));
+    const info = [frDate(s.date), s.lieu].filter(Boolean).join(" · ");
+    if(info) L.push("📅 " + info);
+    rc.teams.forEach(function(t){
+      L.push("");
+      L.push("🏆 " + t.label + (t.present ? " (" + t.present + " présent" + (t.present > 1 ? "s" : "") + ")" : ""));
+      if(!t.ranking.length){ L.push("Pas de score saisi"); return; }
+      t.ranking.forEach(function(r){
+        const medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : (r.rank + ".");
+        L.push(medal + " " + dn(r.name, short) + " — " + r.score + (r.ms ? " ★" + r.ms.v : ""));
+      });
+    });
+    L.push("");
+    if(rc.best){
+      L.push("🔥 Meilleur score : " + rc.best.rows.map(function(r){ return dn(r.name, short); }).join(", ") + " — " + rc.best.score);
+    }
+    const ties = progressTies(rc);
+    if(ties.length){
+      const p = ties[0];
+      L.push("🚀 Plus grosse progression : " + ties.map(function(x){ return dn(x.name, short); }).join(", ") +
+        " +" + p.delta + (ties.length === 1 ? " (" + p.prev + " → " + p.score + ")" : ""));
+    }
+    if(rc.milestones.length){
+      L.push("⭐ Nouveaux paliers : " + rc.milestones.map(function(m){ return dn(m.name, short) + " (" + m.ms.v + ")"; }).join(", "));
+    }
+    L.push("");
+    L.push("Bravo à tous ! 👏");
+    return L.join("\n");
+  }
+
+  // ---- Image du bilan (canvas) ----
+  function loadImg(src){
+    return new Promise(function(resolve){
+      const im = new Image();
+      im.onload = function(){ resolve(im); };
+      im.onerror = function(){ resolve(null); };
+      im.src = src;
+    });
+  }
+  function rrect(ctx, x, y, w, h, r){
+    ctx.beginPath();
+    ctx.moveTo(x + r, y);
+    ctx.arcTo(x + w, y, x + w, y + h, r);
+    ctx.arcTo(x + w, y + h, x, y + h, r);
+    ctx.arcTo(x, y + h, x, y, r);
+    ctx.arcTo(x, y, x + w, y, r);
+    ctx.closePath();
+  }
+  function fitText(ctx, text, maxW){
+    if(ctx.measureText(text).width <= maxW) return text;
+    let t = text;
+    while(t.length > 1 && ctx.measureText(t + "…").width > maxW) t = t.slice(0, -1);
+    return t + "…";
+  }
+  function canvasStar(ctx, cx, cy, R, color){
+    ctx.beginPath();
+    for(let i = 0; i < 10; i++){
+      const r = i % 2 === 0 ? R : R * 0.45;
+      const a = (-90 + 36 * i) * Math.PI / 180;
+      const x = cx + r * Math.cos(a), y = cy + r * Math.sin(a);
+      if(i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+    }
+    ctx.closePath();
+    ctx.fillStyle = color;
+    ctx.fill();
+  }
+
+  async function buildRecapCanvas(rc, short){
+    const FONT = '-apple-system, "Segoe UI", Roboto, Arial, sans-serif';
+    const logo = await loadImg(LOGO_DATA_URI);
+    const W = 1080, pad = 44, gapCol = 24;
+    const colW = (W - pad * 2 - gapCol) / 2;
+    const rowH = 60, headerH = 200, colHeadH = 70;
+    const maxRows = Math.max(4, Math.max.apply(null, rc.teams.map(function(t){ return t.ranking.length; })));
+
+    const cards = [];
+    if(rc.best){
+      cards.push({ color: "#c9971f", title: "MEILLEUR SCORE",
+        main: rc.best.rows.map(function(r){ return dn(r.name, short); }).join(", ") + "  —  " + rc.best.score,
+        sub: rc.best.rows.map(function(r){ return r.team; }).filter(function(v, i, a){ return a.indexOf(v) === i; }).join(" · ") });
+    }
+    const ties = progressTies(rc);
+    if(ties.length){
+      const p = ties[0];
+      cards.push({ color: "#2f7d3c", title: "PLUS GROSSE PROGRESSION",
+        main: ties.map(function(x){ return dn(x.name, short); }).join(", ") + "  +" + p.delta,
+        sub: ties.length === 1 ? (p.prev + " → " + p.score + " jongles · " + p.team) : "ex aequo" });
+    }
+    if(rc.milestones.length){
+      cards.push({ color: "#1450a3", title: "NOUVEAUX PALIERS",
+        items: rc.milestones.slice(0, 8).map(function(m){ return dn(m.name, short) + " ★" + m.ms.v; }),
+        sub: rc.milestones.length > 8 ? "+ " + (rc.milestones.length - 8) + " autre(s)" : "" });
+    }
+    const cardGap = 18;
+    // Hauteur des cartes calculée selon le nombre de lignes (retour à la ligne pour les paliers).
+    const mctx = document.createElement("canvas").getContext("2d");
+    cards.forEach(function(c){
+      if(c.items){
+        c.fs = 30; c.lineH = 42;
+        mctx.font = "800 30px " + FONT;
+        const maxW = W - pad * 2 - 76;
+        c.lines = [];
+        let cur = "";
+        c.items.forEach(function(it){
+          const t = cur ? cur + "     " + it : it;
+          if(cur && mctx.measureText(t).width > maxW){ c.lines.push(cur); cur = it; } else cur = t;
+        });
+        if(cur) c.lines.push(cur);
+      }else{
+        c.fs = 38; c.lineH = 46; c.lines = [c.main];
+      }
+      c.h = 84 + (c.lines.length - 1) * c.lineH + (c.sub ? 36 : 0) + 30;
+    });
+    const cardsTotal = cards.reduce(function(a, c){ return a + c.h + cardGap; }, 0);
+    const H = headerH + 34 + colHeadH + maxRows * rowH + 30 + cardsTotal + 100;
+
+    const canvas = document.createElement("canvas");
+    canvas.width = W; canvas.height = H;
+    const ctx = canvas.getContext("2d");
+
+    ctx.fillStyle = "#f6f5f1";
+    ctx.fillRect(0, 0, W, H);
+
+    // En-tête
+    const g = ctx.createLinearGradient(0, 0, W, headerH);
+    g.addColorStop(0, "#0d2149"); g.addColorStop(1, "#081431");
+    ctx.fillStyle = g;
+    ctx.fillRect(0, 0, W, headerH);
+    ctx.fillStyle = "#fff";
+    rrect(ctx, pad, 34, 132, 132, 22); ctx.fill();
+    if(logo){
+      const sc = Math.min(108 / logo.width, 108 / logo.height);
+      const lw = logo.width * sc, lh = logo.height * sc;
+      ctx.drawImage(logo, pad + (132 - lw) / 2, 34 + (132 - lh) / 2, lw, lh);
+    }
+    const tx = pad + 132 + 30;
+    ctx.textAlign = "left"; ctx.textBaseline = "alphabetic";
+    ctx.fillStyle = "#fff"; ctx.font = "800 58px " + FONT;
+    ctx.fillText("DÉFI JONGLERIE", tx, 96);
+    ctx.fillStyle = "#e3b649"; ctx.font = "700 34px " + FONT;
+    ctx.fillText(fitText(ctx, sessionLabel(rc.session), W - tx - pad), tx, 144);
+    ctx.fillStyle = "#cdd6ea"; ctx.font = "500 26px " + FONT;
+    ctx.fillText(fitText(ctx, [frDate(rc.session.date), rc.session.lieu].filter(Boolean).join(" · "), W - tx - pad), tx, 182);
+
+    // Classements
+    const y0 = headerH + 34;
+    const colColors = ["#1450a3", "#2f7d3c"];
+    const medalColors = ["#c9971f", "#9aa3ad", "#b8753a"];
+    const totalH = colHeadH + maxRows * rowH;
+    rc.teams.forEach(function(t, i){
+      const x = pad + i * (colW + gapCol);
+      ctx.save();
+      rrect(ctx, x, y0, colW, totalH, 16); ctx.clip();
+      ctx.fillStyle = "#fff"; ctx.fillRect(x, y0, colW, totalH);
+      ctx.fillStyle = colColors[i]; ctx.fillRect(x, y0, colW, colHeadH);
+      ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.font = "800 32px " + FONT;
+      ctx.fillText(t.label, x + 22, y0 + 46);
+      ctx.textAlign = "right"; ctx.font = "500 22px " + FONT;
+      ctx.fillStyle = "rgba(255,255,255,0.88)";
+      ctx.fillText(t.present + " présent" + (t.present > 1 ? "s" : ""), x + colW - 22, y0 + 44);
+      if(!t.ranking.length){
+        ctx.textAlign = "center"; ctx.fillStyle = "#a89b70"; ctx.font = "600 26px " + FONT;
+        ctx.fillText("Aucun score saisi", x + colW / 2, y0 + colHeadH + 70);
+      }
+      t.ranking.forEach(function(r, k){
+        const ry = y0 + colHeadH + k * rowH;
+        if(k % 2 === 1){ ctx.fillStyle = "#faf9f5"; ctx.fillRect(x, ry, colW, rowH); }
+        const cy = ry + rowH / 2;
+        if(r.rank <= 3){
+          ctx.beginPath(); ctx.arc(x + 38, cy, 19, 0, Math.PI * 2);
+          ctx.fillStyle = medalColors[r.rank - 1]; ctx.fill();
+          ctx.fillStyle = "#fff"; ctx.textAlign = "center"; ctx.font = "800 22px " + FONT;
+          ctx.fillText(String(r.rank), x + 38, cy + 8);
+        }else{
+          ctx.fillStyle = "#a89b70"; ctx.textAlign = "center"; ctx.font = "700 24px " + FONT;
+          ctx.fillText(String(r.rank), x + 38, cy + 9);
+        }
+        ctx.font = "800 30px " + FONT;
+        const sw = ctx.measureText(String(r.score)).width;
+        const starSpace = r.ms ? 34 : 0;
+        ctx.font = "700 27px " + FONT;
+        ctx.fillStyle = "#0d2149"; ctx.textAlign = "left";
+        ctx.fillText(fitText(ctx, dn(r.name, short), colW - 72 - sw - starSpace - 34), x + 70, cy + 10);
+        ctx.font = "800 30px " + FONT; ctx.textAlign = "right"; ctx.fillStyle = "#0d2149";
+        ctx.fillText(String(r.score), x + colW - 22, cy + 11);
+        if(r.ms) canvasStar(ctx, x + colW - 22 - sw - 20, cy, 13, r.ms.color);
+      });
+      ctx.restore();
+    });
+
+    // Cartes « à retenir »
+    let cy0 = y0 + totalH + 30;
+    cards.forEach(function(c){
+      ctx.save();
+      rrect(ctx, pad, cy0, W - pad * 2, c.h, 18); ctx.clip();
+      ctx.fillStyle = "#fff"; ctx.fillRect(pad, cy0, W - pad * 2, c.h);
+      ctx.fillStyle = c.color; ctx.fillRect(pad, cy0, 14, c.h);
+      ctx.restore();
+      ctx.textAlign = "left";
+      ctx.fillStyle = c.color; ctx.font = "800 22px " + FONT;
+      ctx.fillText(c.title, pad + 38, cy0 + 38);
+      ctx.fillStyle = "#0d2149"; ctx.font = "800 " + c.fs + "px " + FONT;
+      c.lines.forEach(function(line, k){
+        ctx.fillText(fitText(ctx, line, W - pad * 2 - 76), pad + 38, cy0 + 84 + k * c.lineH);
+      });
+      if(c.sub){
+        ctx.fillStyle = "#847f6f"; ctx.font = "500 24px " + FONT;
+        ctx.fillText(fitText(ctx, c.sub, W - pad * 2 - 76), pad + 38, cy0 + 84 + (c.lines.length - 1) * c.lineH + 36);
+      }
+      cy0 += c.h + cardGap;
+    });
+
+    ctx.textAlign = "center";
+    ctx.fillStyle = "#0d2149"; ctx.font = "800 32px " + FONT;
+    ctx.fillText("Bravo à tous !", W / 2, H - 52);
+    ctx.fillStyle = "#a89b70"; ctx.font = "500 22px " + FONT;
+    ctx.fillText("District de l'Eure de Football · FootJongle", W / 2, H - 20);
+    return canvas;
+  }
+
+  // ---- Fenêtre « Bilan & partage » ----
+  let recapState = null;
+  const recapBgEl = document.getElementById("jgRecapModalBg");
+
+  async function openRecap(session){
+    try{
+      const all = await loadAllSessions();
+      const i = all.findIndex(function(s){ return s.id === session.id; });
+      if(i === -1) all.push(session); else all[i] = session;
+      recapState = { rc: computeRecap(session, all), short: true, canvas: null };
+      hideNextBarNow();
+      renderRecapModal();
+      recapBgEl.classList.add("open");
+    }catch(e){
+      console.error("Recap error:", e);
+      alert("Impossible de calculer le bilan de cette séance.");
+    }
+  }
+
+  function downloadBlob(blob, filename){
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = filename;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    setTimeout(function(){ URL.revokeObjectURL(url); }, 2000);
+  }
+  async function copyText(t){
+    try{ await navigator.clipboard.writeText(t); return true; }
+    catch(e){
+      const ta = document.createElement("textarea");
+      ta.value = t; ta.style.position = "fixed"; ta.style.opacity = "0";
+      document.body.appendChild(ta); ta.select();
+      let ok = false;
+      try{ ok = document.execCommand("copy"); }catch(e2){}
+      ta.remove();
+      return ok;
+    }
+  }
+
+  function renderRecapModal(){
+    const st = recapState;
+    const rc = st.rc;
+    const short = st.short;
+    document.getElementById("jgRecapSub").textContent =
+      [sessionLabel(rc.session), rc.session.lieu].filter(function(v, i){ return v && (i === 0 || v); }).join(" · ");
+
+    let h = "";
+    h += '<div class="jg-recap-sec"><div class="jg-recap-h">🚀 Les plus progressés</div>';
+    if(rc.progress.length){
+      h += '<div class="jg-recap-card">';
+      rc.progress.slice(0, 3).forEach(function(p, i){
+        h += '<div class="jg-recap-line"><span><b>' + (i + 1) + '. ' + escapeHtml(dn(p.name, short)) + '</b> <small>' + escapeHtml(p.team) + '</small></span>' +
+             '<span class="jg-recap-delta">+' + p.delta + ' <small>(' + p.prev + ' → ' + p.score + ')</small></span></div>';
+      });
+      h += '</div>';
+    }else{
+      h += '<div class="jg-recap-card" style="color:#847f6f;padding:10px 11px;">Aucune progression à afficher : il faut un score à une séance précédente.</div>';
+    }
+    h += '</div>';
+
+    h += '<div class="jg-recap-sec"><div class="jg-recap-h">🔥 Meilleur score du plateau</div>';
+    if(rc.best){
+      h += '<div class="jg-recap-card"><div class="jg-recap-line"><span><b>' + escapeHtml(rc.best.rows.map(function(r){ return dn(r.name, short); }).join(", ")) + '</b> <small>' +
+           escapeHtml(rc.best.rows.map(function(r){ return r.team; }).filter(function(v, i, a){ return a.indexOf(v) === i; }).join(" · ")) + '</small></span>' +
+           '<span class="jg-recap-delta" style="color:#0d2149;">' + rc.best.score + ' ' + starHtml(milestoneFor(rc.best.score)) + '</span></div></div>';
+    }else{
+      h += '<div class="jg-recap-card" style="color:#847f6f;padding:10px 11px;">Aucun score saisi.</div>';
+    }
+    h += '</div>';
+
+    if(rc.milestones.length){
+      h += '<div class="jg-recap-sec"><div class="jg-recap-h">⭐ Nouveaux paliers</div>';
+      rc.milestones.forEach(function(m){
+        h += '<span class="jg-chip"><span style="color:' + m.ms.color + ';">★</span> ' + escapeHtml(dn(m.name, short)) + ' · ' + m.ms.v + '</span>';
+      });
+      h += '</div>';
+    }
+
+    h += '<div class="jg-recap-sec"><div class="jg-recap-h">📤 Résumé à partager (CAPA 1 et CAPA 2)</div>' +
+      '<label class="jg-recap-opt"><input type="checkbox" id="jgRecapShort"' + (short ? " checked" : "") + '> Prénom + initiale du nom (recommandé pour un groupe de parents)</label>' +
+      '<textarea class="jg-recap-text" id="jgRecapText"></textarea>' +
+      '<img class="jg-recap-img" id="jgRecapImg" alt="Aperçu de l\'image du bilan">' +
+      '<div class="jg-recap-btns">' +
+        '<button type="button" class="jg-io-btn" id="jgRecapWa">📲 WhatsApp (texte)</button>' +
+        '<button type="button" class="jg-io-btn" id="jgRecapCopy">📋 Copier le texte</button>' +
+        '<button type="button" class="jg-io-btn" id="jgRecapShareImg">🖼 Partager l\'image</button>' +
+        '<button type="button" class="jg-io-btn" id="jgRecapSaveImg">⭳ Enregistrer l\'image</button>' +
+      '</div></div>';
+
+    document.getElementById("jgRecapBody").innerHTML = h;
+    const textEl = document.getElementById("jgRecapText");
+    textEl.value = buildShareText(rc, short);
+
+    const imgEl = document.getElementById("jgRecapImg");
+    buildRecapCanvas(rc, short).then(function(c){
+      if(recapState !== st || st.short !== short) return;
+      st.canvas = c;
+      imgEl.src = c.toDataURL("image/png");
+    });
+
+    document.getElementById("jgRecapShort").addEventListener("change", function(){
+      st.short = this.checked;
+      st.canvas = null;
+      renderRecapModal();
+    });
+    const fname = "bilan-jonglerie_" + (rc.session.date || todayISO()) + ".png";
+    document.getElementById("jgRecapWa").addEventListener("click", function(){
+      const t = textEl.value;
+      if(navigator.share){ navigator.share({ text: t }).catch(function(){}); }
+      else{ window.open("https://wa.me/?text=" + encodeURIComponent(t), "_blank"); }
+    });
+    document.getElementById("jgRecapCopy").addEventListener("click", async function(){
+      const ok = await copyText(textEl.value);
+      showRecordToast(ok ? "📋 Texte copié" : "Copie impossible : sélectionnez le texte à la main");
+    });
+    document.getElementById("jgRecapShareImg").addEventListener("click", function(){
+      if(!st.canvas){ showRecordToast("Image en cours de préparation…"); return; }
+      st.canvas.toBlob(function(blob){
+        if(!blob) return;
+        const file = new File([blob], fname, { type: "image/png" });
+        if(navigator.canShare && navigator.canShare({ files: [file] })){
+          navigator.share({ files: [file], title: "Bilan jonglerie" }).catch(function(){});
+        }else{
+          downloadBlob(blob, fname);
+          showRecordToast("🖼 Image enregistrée");
+        }
+      }, "image/png");
+    });
+    document.getElementById("jgRecapSaveImg").addEventListener("click", function(){
+      if(!st.canvas){ showRecordToast("Image en cours de préparation…"); return; }
+      st.canvas.toBlob(function(blob){ if(blob) downloadBlob(blob, fname); }, "image/png");
+    });
+  }
+
+  document.getElementById("jgRecapClose").addEventListener("click", function(){ recapBgEl.classList.remove("open"); });
+  recapBgEl.addEventListener("click", function(e){ if(e.target === this) this.classList.remove("open"); });
+
+  // ---- Fiche individuelle d'un joueur (PDF) ----
+  function pdfStar(doc, cx, cy, R, rgb){
+    const pts = [];
+    for(let i = 0; i < 10; i++){
+      const r = i % 2 === 0 ? R : R * 0.45;
+      const a = (-90 + 36 * i) * Math.PI / 180;
+      pts.push([cx + r * Math.cos(a), cy + r * Math.sin(a)]);
+    }
+    const vec = [];
+    for(let i = 1; i < 10; i++) vec.push([pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1]]);
+    doc.setFillColor(rgb[0], rgb[1], rgb[2]);
+    doc.lines(vec, pts[0][0], pts[0][1], [1, 1], "F", true);
+  }
+
+  function exportPlayerSheet(key){
+    const entry = dashboardHistories.get(key);
+    if(!entry){ alert("Joueur introuvable."); return; }
+    try{
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+      const W = doc.internal.pageSize.getWidth();
+      const PH = doc.internal.pageSize.getHeight();
+
+      const app = entry.appearances.slice().sort(function(a, b){ return a.date.localeCompare(b.date); });
+      const scored = app.filter(function(a){ return a.score !== null; });
+      const best = scored.reduce(function(b, a){ return (!b || a.score > b.score) ? a : b; }, null);
+      const first = scored.length ? scored[0] : null;
+      const last = scored.length ? scored[scored.length - 1] : null;
+      const delta = scored.length >= 2 ? last.score - first.score : null;
+      const absents = app.filter(function(a){ return a.absent; }).length;
+      const presents = app.length - absents;
+
+      // En-tête
+      doc.setFillColor(13, 33, 73);
+      doc.rect(0, 0, W, 30, "F");
+      try{
+        doc.setFillColor(255, 255, 255);
+        doc.roundedRect(8, 4.5, 21, 21, 2.5, 2.5, "F");
+        doc.addImage(LOGO_DATA_URI, "PNG", 10, 6.5, 17, 16);
+      }catch(imgErr){ console.error("Logo error:", imgErr); }
+      doc.setTextColor(255, 255, 255);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text("FICHE JOUEUR", W / 2, 14, { align: "center" });
+      doc.setTextColor(227, 182, 73);
+      doc.setFontSize(9.5);
+      doc.text("Défi jonglerie · District de l'Eure de Football", W / 2, 21.5, { align: "center" });
+
+      // Identité
+      doc.setTextColor(13, 33, 73);
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(22);
+      doc.text(entry.display, 15, 45);
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.setTextColor(132, 127, 111);
+      const lastTeam = app.length ? app[app.length - 1].team : "";
+      doc.text([lastTeam, app.length + " séance(s) suivie(s)"].filter(Boolean).join("  ·  "), 15, 52);
+
+      // Chiffres clés
+      const kp = [
+        { v: best ? String(best.score) : "–", l: "RECORD", s: best ? frDate(best.date) : "" },
+        { v: last ? String(last.score) : "–", l: "DERNIER SCORE", s: last ? frDate(last.date) : "" },
+        { v: delta !== null ? (delta > 0 ? "+" : "") + delta : "–", l: "PROGRESSION", s: delta !== null ? "depuis la 1ère séance" : "" },
+        { v: app.length ? Math.round(presents / app.length * 100) + " %" : "–", l: "PRÉSENCE", s: presents + " / " + app.length + " séances" }
+      ];
+      const boxW = (W - 30 - 3 * 4) / 4;
+      kp.forEach(function(k, i){
+        const bx = 15 + i * (boxW + 4);
+        doc.setFillColor(246, 245, 241);
+        doc.roundedRect(bx, 58, boxW, 25, 2, 2, "F");
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(17);
+        if(i === 2 && delta !== null){
+          if(delta > 0) doc.setTextColor(47, 125, 60); else if(delta < 0) doc.setTextColor(217, 96, 26); else doc.setTextColor(13, 33, 73);
+        }else doc.setTextColor(13, 33, 73);
+        doc.text(k.v, bx + boxW / 2, 69, { align: "center" });
+        doc.setFontSize(7);
+        doc.setTextColor(132, 127, 111);
+        doc.text(k.l, bx + boxW / 2, 74.5, { align: "center" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(168, 155, 112);
+        doc.text(k.s, bx + boxW / 2, 79, { align: "center" });
+      });
+
+      // Paliers
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(13, 33, 73);
+      doc.text("PALIERS", 15, 93);
+      const slotW = (W - 30) / MILESTONES.length;
+      MILESTONES.forEach(function(m, i){
+        const cx = 15 + slotW * i + slotW / 2;
+        const reached = scored.find(function(a){ return a.score >= m.v; });
+        pdfStar(doc, cx, 103, 6.2, reached ? m.rgb : [225, 221, 210]);
+        doc.setFont("helvetica", "bold");
+        doc.setFontSize(8.5);
+        doc.setTextColor(reached ? 13 : 168, reached ? 33 : 160, reached ? 73 : 140);
+        doc.text(m.v + " jongles", cx, 113, { align: "center" });
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        doc.setTextColor(168, 155, 112);
+        doc.text(reached ? "atteint le " + frDate(reached.date) : "à conquérir", cx, 117.5, { align: "center" });
+      });
+
+      // Courbe
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(9);
+      doc.setTextColor(13, 33, 73);
+      doc.text("ÉVOLUTION DES SCORES", 15, 128);
+      const bx0 = 15, by0 = 132, bw = 180, bh = 64;
+      doc.setDrawColor(225, 221, 210);
+      doc.setLineWidth(0.2);
+      doc.roundedRect(bx0, by0, bw, bh, 2, 2, "S");
+      if(scored.length < 2){
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(9);
+        doc.setTextColor(168, 155, 112);
+        doc.text(scored.length === 1
+          ? "Une seule séance notée (score : " + scored[0].score + "). La courbe apparaîtra dès la 2e séance."
+          : "Aucun score noté pour le moment.", bx0 + bw / 2, by0 + bh / 2, { align: "center" });
+      }else{
+        const n = scored.length;
+        const vals = scored.map(function(a){ return a.score; });
+        const minS = Math.min.apply(null, vals), maxS = Math.max.apply(null, vals);
+        const pad = Math.max(2, (maxS - minS) * 0.15);
+        const yMin = Math.max(0, Math.floor(minS - pad));
+        const yMax = Math.ceil(maxS + pad) > yMin ? Math.ceil(maxS + pad) : yMin + 10;
+        const pl = bx0 + 11, pr = bx0 + bw - 8, pt = by0 + 8, pb = by0 + bh - 10;
+        const xFor = function(i){ return pl + (pr - pl) * i / (n - 1); };
+        const yFor = function(v){ return pb - ((v - yMin) / (yMax - yMin)) * (pb - pt); };
+        doc.setFont("helvetica", "normal");
+        doc.setFontSize(7);
+        for(let g = 0; g <= 4; g++){
+          const val = yMin + (yMax - yMin) * g / 4;
+          const y = yFor(val);
+          doc.setDrawColor(235, 232, 222);
+          doc.setLineWidth(0.15);
+          doc.line(pl, y, pr, y);
+          doc.setTextColor(168, 155, 112);
+          doc.text(String(Math.round(val)), pl - 2, y + 1, { align: "right" });
+        }
+        doc.setDrawColor(13, 33, 73);
+        doc.setLineWidth(0.6);
+        for(let i = 1; i < n; i++) doc.line(xFor(i - 1), yFor(vals[i - 1]), xFor(i), yFor(vals[i]));
+        const showEvery = n <= 8 ? 1 : Math.ceil(n / 8);
+        scored.forEach(function(a, i){
+          const isLast = i === n - 1;
+          doc.setFillColor(isLast ? 201 : 13, isLast ? 151 : 33, isLast ? 31 : 73);
+          doc.circle(xFor(i), yFor(a.score), isLast ? 1.5 : 1.1, "F");
+          if(i % showEvery === 0 || isLast){
+            doc.setTextColor(13, 33, 73);
+            doc.setFont("helvetica", "bold");
+            doc.setFontSize(7);
+            doc.text(String(a.score), xFor(i), yFor(a.score) - 2.4, { align: "center" });
+            doc.setFont("helvetica", "normal");
+            doc.setTextColor(168, 155, 112);
+            doc.text(frDateShort(a.date), xFor(i), pb + 5.5, { align: "center" });
+          }
+        });
+      }
+
+      // Historique (le plus récent en premier)
+      let prevScore = null;
+      const rows = [];
+      const absFlags = [];
+      app.forEach(function(a){
+        let evo = "";
+        if(a.score !== null){
+          if(prevScore !== null){ const d = a.score - prevScore; evo = (d > 0 ? "+" : "") + d; }
+          prevScore = a.score;
+        }
+        rows.push([frDate(a.date), a.plateau || "–", a.lieu || "–",
+                   a.absent ? "Absent" : (a.score !== null ? String(a.score) : "Non noté"), evo]);
+        absFlags.push(!!a.absent);
+      });
+      rows.reverse(); absFlags.reverse();
+      doc.autoTable({
+        head: [["Date", "Plateau", "Lieu", "Score", "Évolution"]],
+        body: rows,
+        startY: by0 + bh + 8,
+        margin: { left: 15, right: 15, bottom: 16 },
+        styles: { fontSize: 8.5, cellPadding: 1.8, lineColor: [225, 221, 210], lineWidth: 0.15, overflow: "ellipsize" },
+        headStyles: { fillColor: [13, 33, 73], textColor: 255, fontStyle: "bold" },
+        alternateRowStyles: { fillColor: [248, 247, 244] },
+        columnStyles: { 0: { cellWidth: 24 }, 3: { halign: "center", cellWidth: 22 }, 4: { halign: "center", cellWidth: 24 } },
+        didParseCell: function(data){
+          if(data.section === "body" && absFlags[data.row.index]){
+            data.cell.styles.textColor = [164, 69, 63];
+          }
+        },
+        didDrawPage: function(){
+          doc.setFont("helvetica", "normal");
+          doc.setFontSize(7);
+          doc.setTextColor(150, 150, 150);
+          doc.text("Fiche éditée le " + frDate(todayISO()) + " · FootJongle · District de l'Eure de Football", W / 2, PH - 8, { align: "center" });
+        }
+      });
+
+      const safe = entry.display.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/gi, "-");
+      doc.save("fiche_" + safe + ".pdf");
+    }catch(e){
+      console.error("Erreur fiche joueur:", e);
+      alert("Impossible de générer la fiche PDF.");
     }
   }
 
