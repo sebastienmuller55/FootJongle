@@ -303,7 +303,92 @@
     color:#a89b70;
     margin-top:3px;
     font-weight:700;
+    min-height:14px;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
   }
+  .jg-session-card .stat.complete{ color:#4f8a5f; }
+  .jg-session-card .stat.empty{ color:#b8b3a2; font-weight:600; }
+  .jg-session-card .title.empty{
+    color:#a39d8a;
+    font-style:italic;
+    font-weight:700;
+  }
+  .jg-session-card.is-today{
+    border-color:var(--gold);
+    box-shadow:0 1px 3px rgba(0,0,0,0.07), 0 0 0 1px var(--gold);
+  }
+
+  /* ---- Bouton "Reprendre la séance du jour" ---- */
+  .jg-resume-btn{
+    width:100%;
+    display:block;
+    text-align:left;
+    background:var(--navy);
+    color:#fff;
+    border:none;
+    border-radius:10px;
+    padding:11px 14px;
+    cursor:pointer;
+    margin-bottom:10px;
+    box-shadow:0 1px 4px rgba(0,0,0,0.18);
+  }
+  .jg-resume-btn .k{
+    display:block;
+    font-size:11px;
+    font-weight:800;
+    letter-spacing:0.4px;
+    text-transform:uppercase;
+    color:var(--gold-light);
+  }
+  .jg-resume-btn .v{
+    display:block;
+    margin-top:3px;
+    font-size:15px;
+    font-weight:800;
+    white-space:nowrap;
+    overflow:hidden;
+    text-overflow:ellipsis;
+  }
+
+  /* ---- Bandeau compact (accueil et tableau de bord) ---- */
+  .jg-hero.compact{ padding:12px 16px 12px 16px; }
+  .jg-hero.compact .jg-banner{ display:none; }
+  .jg-hero.compact .jg-meta{ margin-top:0; }
+  .jg-hero.compact .jg-hero-top .jg-logo-badge:last-child{ display:none; }
+  .jg-hero.compact .jg-logo{ width:52px; }
+  .jg-hero.compact .jg-hero-title-block{ text-align:left; }
+  .jg-hero.compact h1{ font-size:clamp(19px,5.4vw,24px); }
+  .jg-hero.compact .sub{ font-size:clamp(10px,3vw,12px); }
+
+  /* ---- Pastille de synchronisation (haut de page) ---- */
+  .jg-sync-pill{
+    position:absolute;
+    top:7px;
+    right:12px;
+    z-index:2;
+    display:flex;
+    align-items:center;
+    gap:5px;
+    font-size:10px;
+    font-weight:700;
+    color:#b9c3dd;
+    background:rgba(255,255,255,0.09);
+    padding:3px 8px;
+    border-radius:20px;
+    line-height:1.2;
+  }
+  .jg-sync-pill i{
+    width:7px;
+    height:7px;
+    border-radius:50%;
+    background:#8b93a8;
+    display:inline-block;
+  }
+  .jg-sync-pill.ok i{ background:#6fd08c; }
+  .jg-sync-pill.off{ color:#f5d9a0; }
+  .jg-sync-pill.off i{ background:#f0b44c; }
   .jg-session-card .del{
     border:none;
     background:transparent;
@@ -1027,7 +1112,7 @@
     .jg-root{ max-width:1100px; }
     .jg-month-grid{ grid-template-columns:1fr 1fr 1fr; }
     .jg-kpi-grid{ grid-template-columns:repeat(4, 1fr); }
-    .jg-new-btn, .jg-dash-btn{ max-width:460px; margin-left:auto; margin-right:auto; display:block; }
+    .jg-new-btn, .jg-dash-btn, .jg-resume-btn{ max-width:460px; margin-left:auto; margin-right:auto; display:block; }
   }
 </style>
 </head>
@@ -1074,6 +1159,7 @@
 
 <div class="jg-root" id="jgRoot">
   <div class="jg-hero" id="jgHero">
+    <div class="jg-sync-pill" id="jgSyncTop" aria-live="polite"></div>
     <button class="jg-back" id="jgBackBtn" style="display:none;">‹ Mes séances</button>
     <div class="jg-hero-top">
       <div class="jg-logo-badge"><img class="jg-logo" id="jgLogoImg" alt="Logo District de l'Eure FFF"></div>
@@ -1088,6 +1174,7 @@
   </div>
 
   <div id="jgListView" class="jg-list-wrap" style="display:none;">
+    <div id="jgResumeWrap"></div>
     <button class="jg-new-btn" id="jgNewSession">+ Nouvelle séance</button>
     <button class="jg-dash-btn" id="jgDashboardBtn">📊 Tableau de bord</button>
     <details class="jg-backup">
@@ -1214,8 +1301,19 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "2.7";
+  const APP_VERSION = "2.8";
   const CHANGELOG = [
+    {
+      version: "2.8", date: "19/09/2026",
+      changes: [
+        "Accueil : bandeau du haut compact (logo réduit, bannière et illustration masquées) pour que « Nouvelle séance » et la liste remontent à l'écran.",
+        "Accueil : nouveau bouton « Reprendre la séance du jour » quand une séance non terminée est datée d'aujourd'hui, et cadre doré sur sa carte.",
+        "Accueil : chaque carte affiche l'avancement de la saisie (ex. « 24 / 30 scores saisis », ✓ quand tout est saisi, « Aucun joueur saisi » pour une séance vide).",
+        "Accueil : une séance sans plateau affiche « Plateau à renseigner » au lieu de répéter la date deux fois.",
+        "Statut de synchronisation visible en haut de chaque écran (Connexion… / Synchronisé / Hors ligne), en plus du pied de page.",
+        "Correction : revenir à la liste moins d'une demi-seconde après une saisie pouvait afficher « Erreur d'enregistrement » et perdre la dernière modification."
+      ]
+    },
     {
       version: "2.7", date: "19/09/2026",
       changes: [
@@ -1586,17 +1684,26 @@
     console.error("Auth init error:", e);
   }
 
-  function setSyncStatus(ok){
+  // state : true = synchronisé, false = hors ligne, null = connexion en cours.
+  function setSyncStatus(state){
     const el = document.getElementById("jgSyncBadge");
-    if(!el) return;
-    if(ok){
-      el.textContent = "🌐 Synchronisé";
-      el.style.color = "#6fae7c";
-    }else{
-      el.textContent = "⚠️ Hors ligne (données locales)";
-      el.style.color = "#e0a940";
+    const top = document.getElementById("jgSyncTop");
+    let label, color, cls;
+    if(state === true){ label = "Synchronisé"; color = "#6fae7c"; cls = "ok"; }
+    else if(state === false){ label = "Hors ligne"; color = "#e0a940"; cls = "off"; }
+    else { label = "Connexion…"; color = "#a89b70"; cls = ""; }
+    if(el){
+      el.textContent = state === true ? "🌐 Synchronisé" : (state === false ? "⚠️ Hors ligne (données locales)" : "Connexion…");
+      el.style.color = color;
+    }
+    if(top){
+      top.className = "jg-sync-pill" + (cls ? " " + cls : "");
+      top.innerHTML = "<i></i>" + label;
+      top.title = state === false ? "Vos saisies sont conservées sur cet appareil et partiront dès le retour du réseau." : "";
     }
   }
+  window.addEventListener("offline", function(){ setSyncStatus(false); });
+  window.addEventListener("online", function(){ if(firestoreReady) setSyncStatus(true); });
 
   async function pushSessionToFirestore(session){
     if(!firestoreReady || !db) return { ok: true, local: true };
@@ -1755,20 +1862,23 @@
   function scheduleSaveSession(){
     if(saveTimer) clearTimeout(saveTimer);
     statusEl.textContent = "Enregistrement...";
+    const sess = currentSession; // capturé : l'utilisateur peut revenir à la liste avant l'échéance
     saveTimer = setTimeout(async function(){
+      if(!sess) return;
       try{
-        currentSession.updatedAt = Date.now();
-        await storageAdapter.set(sessionKey(currentSession.id), JSON.stringify(currentSession));
-        pushSessionToFirestore(currentSession);
-        const idxEntry = sessionsIndex.find(function(s){ return s.id === currentSession.id; });
+        sess.updatedAt = Date.now();
+        await storageAdapter.set(sessionKey(sess.id), JSON.stringify(sess));
+        pushSessionToFirestore(sess);
+        const idxEntry = sessionsIndex.find(function(s){ return s.id === sess.id; });
         if(idxEntry){
-          idxEntry.date = currentSession.date;
-          idxEntry.plateau = currentSession.plateau;
-          idxEntry.lieu = currentSession.lieu;
-          idxEntry.updatedAt = currentSession.updatedAt;
-          idxEntry.closed = !!currentSession.closed;
+          idxEntry.date = sess.date;
+          idxEntry.plateau = sess.plateau;
+          idxEntry.lieu = sess.lieu;
+          idxEntry.updatedAt = sess.updatedAt;
+          idxEntry.closed = !!sess.closed;
         }
         await saveIndex();
+        if(view === "list") fillSessionStats();
         statusEl.textContent = "Enregistré ✓";
         setTimeout(function(){ if(statusEl.textContent === "Enregistré ✓") statusEl.textContent = ""; }, 1400);
       }catch(e){
@@ -1845,6 +1955,7 @@
 
   // ---- Rendering ----
   function render(){
+    heroEl.classList.toggle("compact", view !== "editor");
     if(view === "list"){
       backBtn.style.display = "none";
       titleEl.textContent = "MES SÉANCES";
@@ -2315,7 +2426,7 @@
 
   function buildSessionCard(s){
     const card = document.createElement("div");
-    card.className = "jg-session-card" + (s.closed ? " is-closed" : "");
+    card.className = "jg-session-card" + (s.closed ? " is-closed" : "") + ((!s.closed && s.date === todayISO()) ? " is-today" : "");
 
     const parts = (s.date || "").split("-");
     const chip = document.createElement("div");
@@ -2339,12 +2450,21 @@
     info.className = "info";
     const title = document.createElement("div");
     title.className = "title";
-    title.textContent = s.plateau || ("Séance du " + frDate(s.date));
+    if(s.plateau){
+      title.textContent = s.plateau;
+    }else{
+      title.textContent = "Plateau à renseigner";
+      title.classList.add("empty");
+    }
     const meta = document.createElement("div");
     meta.className = "meta";
     meta.textContent = s.lieu || frDate(s.date);
+    const stat = document.createElement("div");
+    stat.className = "stat";
+    stat.dataset.id = s.id;
     info.appendChild(title);
     info.appendChild(meta);
+    info.appendChild(stat);
 
     const pill = document.createElement("span");
     const st = sessionStatus(s);
@@ -2367,8 +2487,72 @@
     return card;
   }
 
+  // Joueurs « engagés » = nom, score ou absence renseignés ; « saisis » = score ou absence.
+  function sessionProgress(sess){
+    let total = 0, done = 0;
+    (sess.teams || []).forEach(function(t){
+      (t.players || []).forEach(function(p){
+        const hasName = String(p.name || "").trim() !== "";
+        const hasScore = p.score !== "" && p.score !== undefined && p.score !== null;
+        if(hasName || hasScore || p.absent){
+          total++;
+          if(hasScore || p.absent) done++;
+        }
+      });
+    });
+    return { total: total, done: done };
+  }
+
+  async function fillSessionStats(){
+    const els = Array.prototype.slice.call(sessionListEl.querySelectorAll(".stat[data-id]"));
+    await Promise.all(els.map(async function(el){
+      const id = el.dataset.id;
+      let sess = (currentSession && currentSession.id === id) ? currentSession : await loadSession(id);
+      if(!el.isConnected) return;
+      if(!sess){ el.textContent = ""; return; }
+      const pr = sessionProgress(sess);
+      el.classList.remove("complete", "empty");
+      if(pr.total === 0){
+        el.textContent = "Aucun joueur saisi";
+        el.classList.add("empty");
+      }else if(pr.done === pr.total){
+        el.textContent = "✓ " + pr.done + " / " + pr.total + " scores saisis";
+        el.classList.add("complete");
+      }else{
+        el.textContent = pr.done + " / " + pr.total + " scores saisis";
+      }
+    }));
+  }
+
+  // Raccourci vers la (ou les) séance(s) non terminée(s) datée(s) d'aujourd'hui.
+  function renderResume(){
+    const wrap = document.getElementById("jgResumeWrap");
+    if(!wrap) return;
+    wrap.innerHTML = "";
+    const today = todayISO();
+    sessionsIndex
+      .filter(function(s){ return !s.closed && s.date === today; })
+      .sort(function(a, b){ return (b.updatedAt || 0) - (a.updatedAt || 0); })
+      .forEach(function(s){
+        const b = document.createElement("button");
+        b.type = "button";
+        b.className = "jg-resume-btn";
+        const k = document.createElement("span");
+        k.className = "k";
+        k.textContent = "▶ Reprendre la séance du jour";
+        const v = document.createElement("span");
+        v.className = "v";
+        v.textContent = s.plateau ? (s.plateau + (s.lieu ? " · " + s.lieu : "")) : "Plateau à renseigner";
+        b.appendChild(k);
+        b.appendChild(v);
+        b.addEventListener("click", function(){ openSession(s.id); });
+        wrap.appendChild(b);
+      });
+  }
+
   function renderSessionList(){
     sessionListEl.innerHTML = "";
+    renderResume();
     const head = document.getElementById("jgListHead");
 
     if(sessionsIndex.length === 0){
@@ -2415,6 +2599,7 @@
       }
       grid.appendChild(buildSessionCard(s));
     });
+    fillSessionStats();
   }
 
   function renderEditorMeta(){
@@ -4124,7 +4309,7 @@
     document.getElementById("jgLogoImg").src = LOGO_DATA_URI;
     document.getElementById("jgIllusImg").src = ILLUS_DATA_URI;
     document.getElementById("jgFooterVersion").textContent = "FootJongle v" + APP_VERSION;
-    setSyncStatus(false);
+    setSyncStatus(firestoreReady ? null : false);
     await migrateLegacySessionsIfNeeded();
     await loadIndex();
     view = "list";
