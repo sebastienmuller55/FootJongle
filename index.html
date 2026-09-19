@@ -212,6 +212,41 @@
     color:var(--navy);
     box-shadow:0 1px 2px rgba(0,0,0,0.08);
   }
+
+  /* ---- Filtres par statut ---- */
+  .jg-filters{
+    display:flex;
+    gap:6px;
+    margin:0 0 12px 0;
+    overflow-x:auto;
+    -webkit-overflow-scrolling:touch;
+    scrollbar-width:none;
+    padding-bottom:2px;
+  }
+  .jg-filters::-webkit-scrollbar{ display:none; }
+  .jg-filters button{
+    flex-shrink:0;
+    border:1px solid #ddd7c5;
+    background:#fff;
+    color:#7d7767;
+    font-size:12px;
+    font-weight:800;
+    padding:6px 12px;
+    border-radius:20px;
+    cursor:pointer;
+    white-space:nowrap;
+  }
+  .jg-filters button .n{
+    margin-left:5px;
+    font-weight:700;
+    opacity:0.7;
+  }
+  .jg-filters button.active{
+    background:var(--navy);
+    border-color:var(--navy);
+    color:#fff;
+  }
+  .jg-filters button.active .n{ color:var(--gold-light); opacity:1; }
   .jg-month{
     font-size:11.5px;
     font-weight:800;
@@ -1195,6 +1230,7 @@
         <button type="button" data-order="asc">Plus anciennes</button>
       </div>
     </div>
+    <div class="jg-filters" id="jgFilterBar" style="display:none;" role="group" aria-label="Filtrer les séances par statut"></div>
     <div id="jgSessionList"></div>
   </div>
 
@@ -1301,8 +1337,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "2.8";
+  const APP_VERSION = "2.9";
   const CHANGELOG = [
+    {
+      version: "2.9", date: "19/09/2026",
+      changes: [
+        "Accueil : filtres par statut (Toutes / À venir / En cours / Terminées) avec le nombre de séances de chaque catégorie. La barre n'apparaît que lorsque la liste contient au moins deux statuts différents, et revient sur « Toutes » si le filtre choisi se vide."
+      ]
+    },
     {
       version: "2.8", date: "19/09/2026",
       changes: [
@@ -2404,6 +2446,7 @@
 
   const MONTHS_FR = ["janvier","février","mars","avril","mai","juin","juillet","août","septembre","octobre","novembre","décembre"];
   const MONTHS_FR_SHORT = ["janv.","févr.","mars","avril","mai","juin","juil.","août","sept.","oct.","nov.","déc."];
+  let sessionFilter = "all"; // "all" | "upcoming" | "open" | "closed" (non mémorisé : on repart toujours de « Toutes »)
   let sessionSortOrder = "desc"; // "desc" = plus récentes d'abord, "asc" = plus anciennes d'abord
 
   // Clé de tri : date de la séance (chronologique), puis dernière modification.
@@ -2550,6 +2593,35 @@
       });
   }
 
+  // Barre de filtres : affichée seulement s'il y a au moins deux statuts différents dans la liste.
+  function renderFilterBar(counts){
+    const bar = document.getElementById("jgFilterBar");
+    if(!bar) return;
+    const kinds = ["upcoming", "open", "closed"].filter(function(k){ return counts[k] > 0; });
+    if(kinds.length < 2){
+      bar.style.display = "none";
+      bar.innerHTML = "";
+      sessionFilter = "all";
+      return;
+    }
+    const labels = { all: "Toutes", upcoming: "À venir", open: "En cours", closed: "Terminées" };
+    bar.innerHTML = "";
+    ["all"].concat(kinds).forEach(function(k){
+      const b = document.createElement("button");
+      b.type = "button";
+      b.dataset.filter = k;
+      b.className = (k === sessionFilter) ? "active" : "";
+      b.setAttribute("aria-pressed", k === sessionFilter ? "true" : "false");
+      b.appendChild(document.createTextNode(labels[k]));
+      const n = document.createElement("span");
+      n.className = "n";
+      n.textContent = counts[k];
+      b.appendChild(n);
+      bar.appendChild(b);
+    });
+    bar.style.display = "flex";
+  }
+
   function renderSessionList(){
     sessionListEl.innerHTML = "";
     renderResume();
@@ -2557,6 +2629,9 @@
 
     if(sessionsIndex.length === 0){
       if(head) head.style.display = "none";
+      const fb = document.getElementById("jgFilterBar");
+      if(fb){ fb.style.display = "none"; fb.innerHTML = ""; }
+      sessionFilter = "all";
       const empty = document.createElement("div");
       empty.className = "jg-empty";
       empty.textContent = "Aucune séance enregistrée. Créez votre première séance ci-dessus.";
@@ -2567,18 +2642,29 @@
     if(head){
       head.style.display = "";
       const n = sessionsIndex.length;
-      const open = sessionsIndex.filter(function(s){ return sessionStatus(s) === "open"; }).length;
-      const upcoming = sessionsIndex.filter(function(s){ return sessionStatus(s) === "upcoming"; }).length;
+      const counts = { all: n, upcoming: 0, open: 0, closed: 0 };
+      sessionsIndex.forEach(function(s){ counts[sessionStatus(s)]++; });
+      const open = counts.open;
+      const upcoming = counts.upcoming;
+      // Si le filtre choisi ne contient plus rien (ex. dernière séance terminée), on revient à « Toutes ».
+      if(sessionFilter !== "all" && counts[sessionFilter] === 0) sessionFilter = "all";
       const countEl = document.getElementById("jgListCount");
       if(countEl){
-        countEl.textContent = n + (n > 1 ? " séances" : " séance") + (open ? " · " + open + " en cours" : "") + (upcoming ? " · " + upcoming + " à venir" : "");
+        if(sessionFilter === "all"){
+          countEl.textContent = n + (n > 1 ? " séances" : " séance") + (open ? " · " + open + " en cours" : "") + (upcoming ? " · " + upcoming + " à venir" : "");
+        }else{
+          countEl.textContent = counts[sessionFilter] + " sur " + n + (n > 1 ? " séances" : " séance");
+        }
       }
+      renderFilterBar(counts);
       Array.prototype.forEach.call(head.querySelectorAll(".jg-sort button"), function(b){
         b.classList.toggle("active", b.dataset.order === sessionSortOrder);
       });
     }
 
-    const sorted = sessionsIndex.slice().sort(function(a, b){
+    const sorted = sessionsIndex.filter(function(s){
+      return sessionFilter === "all" || sessionStatus(s) === sessionFilter;
+    }).sort(function(a, b){
       const diff = sessionSortKey(a) - sessionSortKey(b);
       return sessionSortOrder === "asc" ? diff : -diff;
     });
@@ -2909,6 +2995,12 @@
     const savedOrder = localStorage.getItem("jgSessionSortOrder");
     if(savedOrder === "asc" || savedOrder === "desc") sessionSortOrder = savedOrder;
   }catch(e){}
+  document.getElementById("jgFilterBar").addEventListener("click", function(e){
+    const btn = e.target.closest("button[data-filter]");
+    if(!btn || btn.dataset.filter === sessionFilter) return;
+    sessionFilter = btn.dataset.filter;
+    renderSessionList();
+  });
   document.getElementById("jgSortToggle").addEventListener("click", function(e){
     const btn = e.target.closest("button[data-order]");
     if(!btn || btn.dataset.order === sessionSortOrder) return;
