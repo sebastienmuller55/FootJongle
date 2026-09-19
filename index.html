@@ -294,6 +294,10 @@
     background:#eceade;
     color:#7d7767;
   }
+  .jg-session-card .pill.upcoming{
+    background:#e3ecf8;
+    color:#2f5c99;
+  }
   .jg-session-card .stat{
     font-size:11px;
     color:#a89b70;
@@ -1210,8 +1214,14 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "2.6";
+  const APP_VERSION = "2.7";
   const CHANGELOG = [
+    {
+      version: "2.7", date: "19/09/2026",
+      changes: [
+        "Les séances datées d'un jour futur affichent désormais l'étiquette « À venir » (en bleu) au lieu de « En cours ». Le compteur de l'accueil distingue aussi les séances en cours et à venir. Une séance passe automatiquement en « En cours » le jour J."
+      ]
+    },
     {
       version: "2.6", date: "19/09/2026",
       changes: [
@@ -1673,6 +1683,13 @@
 
   function makeId(){
     return Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+  }
+
+  // "closed" = terminée ; "upcoming" = non terminée et datée d'un jour futur ; sinon "open" (en cours).
+  function sessionStatus(s){
+    if(s.closed) return "closed";
+    if(s.date && s.date > todayISO()) return "upcoming";
+    return "open";
   }
 
   function frDate(iso){
@@ -2330,8 +2347,9 @@
     info.appendChild(meta);
 
     const pill = document.createElement("span");
-    pill.className = "pill" + (s.closed ? " done" : "");
-    pill.textContent = s.closed ? "Terminée" : "En cours";
+    const st = sessionStatus(s);
+    pill.className = "pill" + (st === "closed" ? " done" : (st === "upcoming" ? " upcoming" : ""));
+    pill.textContent = st === "closed" ? "Terminée" : (st === "upcoming" ? "À venir" : "En cours");
 
     const del = document.createElement("button");
     del.className = "del";
@@ -2365,10 +2383,11 @@
     if(head){
       head.style.display = "";
       const n = sessionsIndex.length;
-      const open = sessionsIndex.filter(function(s){ return !s.closed; }).length;
+      const open = sessionsIndex.filter(function(s){ return sessionStatus(s) === "open"; }).length;
+      const upcoming = sessionsIndex.filter(function(s){ return sessionStatus(s) === "upcoming"; }).length;
       const countEl = document.getElementById("jgListCount");
       if(countEl){
-        countEl.textContent = n + (n > 1 ? " séances" : " séance") + (open ? " · " + open + " en cours" : "");
+        countEl.textContent = n + (n > 1 ? " séances" : " séance") + (open ? " · " + open + " en cours" : "") + (upcoming ? " · " + upcoming + " à venir" : "");
       }
       Array.prototype.forEach.call(head.querySelectorAll(".jg-sort button"), function(b){
         b.classList.toggle("active", b.dataset.order === sessionSortOrder);
