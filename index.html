@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FootJongle — District de l'Eure de Football</title>
+<title>FootJongle — Défis U11</title>
 <style>
   :root{
     --navy:#0d2149;
@@ -807,6 +807,32 @@
 
   /* ---- Bilan de séance / partage ---- */
   .jg-modal.wide{max-width:520px; max-height:88vh;}
+  .jg-recap-scope{
+    display:flex;
+    gap:6px;
+    background:#ece9df;
+    border-radius:10px;
+    padding:3px;
+    margin:0 0 14px 0;
+  }
+  .jg-recap-scope button{
+    flex:1;
+    border:none;
+    background:transparent;
+    color:#7d7767;
+    font-size:12.5px;
+    font-weight:800;
+    padding:8px 6px;
+    border-radius:8px;
+    cursor:pointer;
+  }
+  .jg-recap-scope button.active{
+    background:#fff;
+    color:var(--navy);
+    box-shadow:0 1px 2px rgba(0,0,0,0.1);
+  }
+  .jg-recap-scope button.active[data-scope="0"]{ box-shadow:0 1px 2px rgba(0,0,0,0.1), inset 0 -3px 0 var(--t1); }
+  .jg-recap-scope button.active[data-scope="1"]{ box-shadow:0 1px 2px rgba(0,0,0,0.1), inset 0 -3px 0 var(--t2); }
   .jg-recap-sec{margin:0 0 14px 0;}
   .jg-recap-h{font-size:12px; font-weight:800; color:#847f6f; margin-bottom:6px;}
   .jg-recap-card{background:#faf9f5; border:1px solid var(--line); border-radius:10px; padding:6px 11px; font-size:13px;}
@@ -1051,8 +1077,17 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "1.8";
+  const APP_VERSION = "1.9";
   const CHANGELOG = [
+    {
+      version: "1.9", date: "19/09/2026",
+      changes: [
+        "Bilan & partage par équipe : un sélecteur « CAPA 1 / CAPA 2 / Les deux » en haut de la fenêtre. Le texte, l'aperçu et l'image ne contiennent alors que l'équipe choisie, pour envoyer à chaque groupe de parents son propre bilan.",
+        "Les mises en avant sont recalculées sur l'équipe sélectionnée : meilleur score, plus grosse progression et nouveaux paliers ne citent plus un joueur de l'autre équipe.",
+        "Image du bilan : classement sur toute la largeur quand une seule équipe est choisie, avec le nom de l'équipe dans l'en-tête et dans le nom du fichier enregistré.",
+        "L'équipe proposée à l'ouverture est la première qui a des scores saisis."
+      ]
+    },
     {
       version: "1.8", date: "19/09/2026",
       changes: [
@@ -3090,7 +3125,7 @@
         r.rank = rank;
         r.ms = milestoneFor(r.score);
       });
-      teams.push({ label: CLUB_TEAMS[i], ranking: rows, named: named.length, absent: absent, present: named.length - absent });
+      teams.push({ idx: i, label: CLUB_TEAMS[i], ranking: rows, named: named.length, absent: absent, present: named.length - absent });
       rows.forEach(function(r){ scoredAll.push(r); });
     });
 
@@ -3117,20 +3152,70 @@
     return { session: session, teams: teams, best: best, progress: progress, milestones: milestones, hasScores: scoredAll.length > 0 };
   }
 
+  // Vue du bilan limitee a une equipe ("0" = CAPA 1, "1" = CAPA 2) ou plateau complet ("all").
+  // Les mises en avant (meilleur score, progression, paliers) sont recalculees
+  // sur la seule equipe choisie, pour qu'un message envoye au groupe CAPA 1
+  // ne cite jamais un joueur de CAPA 2.
+  function recapView(rc, scope){
+    if(scope === "all") return rc;
+    const idx = Number(scope);
+    const t = (rc.teams || [])[idx];
+    if(!t) return rc;
+    const rows = t.ranking || [];
+
+    let best = null;
+    rows.forEach(function(r){
+      if(!best || r.score > best.score) best = { score: r.score, rows: [r] };
+      else if(r.score === best.score) best.rows.push(r);
+    });
+
+    const progress = rows
+      .filter(function(r){ return r.prevLast !== null && r.score > r.prevLast; })
+      .map(function(r){ return { name: r.name, team: r.team, prev: r.prevLast, score: r.score, delta: r.score - r.prevLast }; })
+      .sort(function(a, b){ return (b.delta - a.delta) || (b.score - a.score); });
+
+    const milestones = [];
+    rows.forEach(function(r){
+      const pb = r.prevBest === null ? -1 : r.prevBest;
+      let top = null;
+      MILESTONES.forEach(function(m){ if(pb < m.v && m.v <= r.score) top = m; });
+      if(top) milestones.push({ name: r.name, team: r.team, ms: top });
+    });
+    milestones.sort(function(a, b){ return (b.ms.v - a.ms.v) || a.name.localeCompare(b.name, "fr"); });
+
+    return { session: rc.session, teams: [t], best: best, progress: progress,
+             milestones: milestones, hasScores: rows.length > 0, scope: scope, scopeLabel: t.label };
+  }
+
+  // Equipe proposee par defaut a l'ouverture : la premiere qui a des scores.
+  function defaultRecapScope(rc){
+    for(let i = 0; i < (rc.teams || []).length; i++){
+      if((rc.teams[i].ranking || []).length) return String(i);
+    }
+    return "0";
+  }
+
   function progressTies(rc){
     if(!rc.progress.length) return [];
     return rc.progress.filter(function(p){ return p.delta === rc.progress[0].delta; });
   }
 
+  function isScoped(rc){ return rc.scope !== undefined && rc.scope !== "all"; }
+
   function buildShareText(rc, short){
     const s = rc.session;
+    const scoped = isScoped(rc);
     const L = [];
-    L.push("⚽ Défi Jonglerie — " + (s.plateau || "Séance"));
-    const info = [frDate(s.date), s.lieu].filter(Boolean).join(" · ");
-    if(info) L.push("📅 " + info);
+    L.push("⚽ Défi Jonglerie — " + (scoped ? rc.scopeLabel : (s.plateau || "Séance")));
+    const infoParts = [];
+    if(scoped && s.plateau) infoParts.push(s.plateau);
+    if(frDate(s.date)) infoParts.push(frDate(s.date));
+    if(s.lieu) infoParts.push(s.lieu);
+    if(infoParts.length) L.push("📅 " + infoParts.join(" · "));
     rc.teams.forEach(function(t){
       L.push("");
-      L.push("🏆 " + t.label + (t.present ? " (" + t.present + " présent" + (t.present > 1 ? "s" : "") + ")" : ""));
+      const head = scoped ? "Classement" : t.label;
+      L.push("🏆 " + head + (t.present ? " (" + t.present + " présent" + (t.present > 1 ? "s" : "") + ")" : ""));
       if(!t.ranking.length){ L.push("Pas de score saisi"); return; }
       t.ranking.forEach(function(r){
         const medal = r.rank === 1 ? "🥇" : r.rank === 2 ? "🥈" : r.rank === 3 ? "🥉" : (r.rank + ".");
@@ -3139,7 +3224,8 @@
     });
     L.push("");
     if(rc.best){
-      L.push("🔥 Meilleur score : " + rc.best.rows.map(function(r){ return dn(r.name, short); }).join(", ") + " — " + rc.best.score);
+      L.push("🔥 Meilleur score" + (scoped ? " de l'équipe" : " du plateau") + " : " +
+        rc.best.rows.map(function(r){ return dn(r.name, short); }).join(", ") + " — " + rc.best.score);
     }
     const ties = progressTies(rc);
     if(ties.length){
@@ -3196,22 +3282,27 @@
     const FONT = '-apple-system, "Segoe UI", Roboto, Arial, sans-serif';
     const logo = await loadImg(LOGO_DATA_URI);
     const W = 1080, pad = 44, gapCol = 24;
-    const colW = (W - pad * 2 - gapCol) / 2;
+    const singleTeam = rc.teams.length === 1;
+    const colW = singleTeam ? (W - pad * 2) : (W - pad * 2 - gapCol) / 2;
     const rowH = 60, headerH = 200, colHeadH = 70;
-    const maxRows = Math.max(4, Math.max.apply(null, rc.teams.map(function(t){ return t.ranking.length; })));
+    // Avec deux colonnes, on garde une hauteur minimale pour qu'elles s'alignent.
+    // Avec une seule équipe, on colle au nombre réel de joueurs classés.
+    const maxScored = Math.max.apply(null, rc.teams.map(function(t){ return t.ranking.length; }));
+    const maxRows = singleTeam ? Math.max(1, maxScored) : Math.max(4, maxScored);
 
+    const scopedImg = isScoped(rc);
     const cards = [];
     if(rc.best){
       cards.push({ color: "#c9971f", title: "MEILLEUR SCORE",
         main: rc.best.rows.map(function(r){ return dn(r.name, short); }).join(", ") + "  —  " + rc.best.score,
-        sub: rc.best.rows.map(function(r){ return r.team; }).filter(function(v, i, a){ return a.indexOf(v) === i; }).join(" · ") });
+        sub: scopedImg ? "" : rc.best.rows.map(function(r){ return r.team; }).filter(function(v, i, a){ return a.indexOf(v) === i; }).join(" · ") });
     }
     const ties = progressTies(rc);
     if(ties.length){
       const p = ties[0];
       cards.push({ color: "#2f7d3c", title: "PLUS GROSSE PROGRESSION",
         main: ties.map(function(x){ return dn(x.name, short); }).join(", ") + "  +" + p.delta,
-        sub: ties.length === 1 ? (p.prev + " → " + p.score + " jongles · " + p.team) : "ex aequo" });
+        sub: ties.length === 1 ? (p.prev + " → " + p.score + " jongles" + (scopedImg ? "" : " · " + p.team)) : "ex aequo" });
     }
     if(rc.milestones.length){
       cards.push({ color: "#1450a3", title: "NOUVEAUX PALIERS",
@@ -3265,7 +3356,8 @@
     ctx.fillStyle = "#fff"; ctx.font = "800 58px " + FONT;
     ctx.fillText("DÉFI JONGLERIE", tx, 96);
     ctx.fillStyle = "#e3b649"; ctx.font = "700 34px " + FONT;
-    ctx.fillText(fitText(ctx, sessionLabel(rc.session), W - tx - pad), tx, 144);
+    const headLine = isScoped(rc) ? (rc.scopeLabel + "  ·  " + sessionLabel(rc.session)) : sessionLabel(rc.session);
+    ctx.fillText(fitText(ctx, headLine, W - tx - pad), tx, 144);
     ctx.fillStyle = "#cdd6ea"; ctx.font = "500 26px " + FONT;
     ctx.fillText(fitText(ctx, [frDate(rc.session.date), rc.session.lieu].filter(Boolean).join(" · "), W - tx - pad), tx, 182);
 
@@ -3279,7 +3371,7 @@
       ctx.save();
       rrect(ctx, x, y0, colW, totalH, 16); ctx.clip();
       ctx.fillStyle = "#fff"; ctx.fillRect(x, y0, colW, totalH);
-      ctx.fillStyle = colColors[i]; ctx.fillRect(x, y0, colW, colHeadH);
+      ctx.fillStyle = colColors[t.idx === undefined ? i : t.idx]; ctx.fillRect(x, y0, colW, colHeadH);
       ctx.fillStyle = "#fff"; ctx.textAlign = "left"; ctx.font = "800 32px " + FONT;
       ctx.fillText(t.label, x + 22, y0 + 46);
       ctx.textAlign = "right"; ctx.font = "500 22px " + FONT;
@@ -3354,7 +3446,8 @@
       const all = await loadAllSessions();
       const i = all.findIndex(function(s){ return s.id === session.id; });
       if(i === -1) all.push(session); else all[i] = session;
-      recapState = { rc: computeRecap(session, all), short: true, canvas: null };
+      const full = computeRecap(session, all);
+      recapState = { full: full, short: true, canvas: null, scope: defaultRecapScope(full) };
       hideNextBarNow();
       renderRecapModal();
       recapBgEl.classList.add("open");
@@ -3386,17 +3479,29 @@
 
   function renderRecapModal(){
     const st = recapState;
-    const rc = st.rc;
+    const full = st.full;
+    const rc = recapView(full, st.scope);
     const short = st.short;
+    const scoped = isScoped(rc);
+    const who = scoped ? rc.scopeLabel : "du plateau";
     document.getElementById("jgRecapSub").textContent =
       [sessionLabel(rc.session), rc.session.lieu].filter(function(v, i){ return v && (i === 0 || v); }).join(" · ");
 
     let h = "";
-    h += '<div class="jg-recap-sec"><div class="jg-recap-h">🚀 Les plus progressés</div>';
+    h += '<div class="jg-recap-scope" id="jgRecapScope">';
+    (full.teams || []).forEach(function(t){
+      const n = (t.ranking || []).length;
+      h += '<button type="button" data-scope="' + t.idx + '"' + (String(t.idx) === String(st.scope) ? ' class="active"' : '') + '>' +
+           escapeHtml(t.label) + (n ? '' : ' <small>(vide)</small>') + '</button>';
+    });
+    h += '<button type="button" data-scope="all"' + (st.scope === "all" ? ' class="active"' : '') + '>Les deux</button>';
+    h += '</div>';
+
+    h += '<div class="jg-recap-sec"><div class="jg-recap-h">🚀 Les plus progressés' + (scoped ? ' — ' + escapeHtml(rc.scopeLabel) : '') + '</div>';
     if(rc.progress.length){
       h += '<div class="jg-recap-card">';
       rc.progress.slice(0, 3).forEach(function(p, i){
-        h += '<div class="jg-recap-line"><span><b>' + (i + 1) + '. ' + escapeHtml(dn(p.name, short)) + '</b> <small>' + escapeHtml(p.team) + '</small></span>' +
+        h += '<div class="jg-recap-line"><span><b>' + (i + 1) + '. ' + escapeHtml(dn(p.name, short)) + '</b>' + (scoped ? '' : ' <small>' + escapeHtml(p.team) + '</small>') + '</span>' +
              '<span class="jg-recap-delta">+' + p.delta + ' <small>(' + p.prev + ' → ' + p.score + ')</small></span></div>';
       });
       h += '</div>';
@@ -3405,10 +3510,10 @@
     }
     h += '</div>';
 
-    h += '<div class="jg-recap-sec"><div class="jg-recap-h">🔥 Meilleur score du plateau</div>';
+    h += '<div class="jg-recap-sec"><div class="jg-recap-h">🔥 Meilleur score ' + escapeHtml(scoped ? "de " + rc.scopeLabel : "du plateau") + '</div>';
     if(rc.best){
-      h += '<div class="jg-recap-card"><div class="jg-recap-line"><span><b>' + escapeHtml(rc.best.rows.map(function(r){ return dn(r.name, short); }).join(", ")) + '</b> <small>' +
-           escapeHtml(rc.best.rows.map(function(r){ return r.team; }).filter(function(v, i, a){ return a.indexOf(v) === i; }).join(" · ")) + '</small></span>' +
+      h += '<div class="jg-recap-card"><div class="jg-recap-line"><span><b>' + escapeHtml(rc.best.rows.map(function(r){ return dn(r.name, short); }).join(", ")) + '</b>' +
+           (scoped ? '' : ' <small>' + escapeHtml(rc.best.rows.map(function(r){ return r.team; }).filter(function(v, i, a){ return a.indexOf(v) === i; }).join(" · ")) + '</small>') + '</span>' +
            '<span class="jg-recap-delta" style="color:#0d2149;">' + rc.best.score + ' ' + starHtml(milestoneFor(rc.best.score)) + '</span></div></div>';
     }else{
       h += '<div class="jg-recap-card" style="color:#847f6f;padding:10px 11px;">Aucun score saisi.</div>';
@@ -3423,7 +3528,8 @@
       h += '</div>';
     }
 
-    h += '<div class="jg-recap-sec"><div class="jg-recap-h">📤 Résumé à partager (CAPA 1 et CAPA 2)</div>' +
+    h += '<div class="jg-recap-sec"><div class="jg-recap-h">📤 Résumé à partager ' +
+      escapeHtml(scoped ? "— groupe " + rc.scopeLabel : "— plateau complet (CAPA 1 et CAPA 2)") + '</div>' +
       '<label class="jg-recap-opt"><input type="checkbox" id="jgRecapShort"' + (short ? " checked" : "") + '> Prénom + initiale du nom (recommandé pour un groupe de parents)</label>' +
       '<textarea class="jg-recap-text" id="jgRecapText"></textarea>' +
       '<img class="jg-recap-img" id="jgRecapImg" alt="Aperçu de l\'image du bilan">' +
@@ -3439,10 +3545,19 @@
     textEl.value = buildShareText(rc, short);
 
     const imgEl = document.getElementById("jgRecapImg");
+    const renderedScope = String(st.scope);
     buildRecapCanvas(rc, short).then(function(c){
-      if(recapState !== st || st.short !== short) return;
+      if(recapState !== st || st.short !== short || String(st.scope) !== renderedScope) return;
       st.canvas = c;
       imgEl.src = c.toDataURL("image/png");
+    });
+
+    document.getElementById("jgRecapScope").addEventListener("click", function(e){
+      const btn = e.target.closest("button[data-scope]");
+      if(!btn || String(btn.dataset.scope) === String(st.scope)) return;
+      st.scope = btn.dataset.scope;
+      st.canvas = null;
+      renderRecapModal();
     });
 
     document.getElementById("jgRecapShort").addEventListener("change", function(){
@@ -3450,7 +3565,8 @@
       st.canvas = null;
       renderRecapModal();
     });
-    const fname = "bilan-jonglerie_" + (rc.session.date || todayISO()) + ".png";
+    const scopeSlug = scoped ? "_" + rc.scopeLabel.toLowerCase().replace(/[^a-z0-9]+/g, "-") : "";
+    const fname = "bilan-jonglerie" + scopeSlug + "_" + (rc.session.date || todayISO()) + ".png";
     document.getElementById("jgRecapWa").addEventListener("click", function(){
       const t = textEl.value;
       if(navigator.share){ navigator.share({ text: t }).catch(function(){}); }
