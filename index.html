@@ -281,6 +281,54 @@
     letter-spacing:0.3px;
   }
   .jg-panel-head input::placeholder{color:rgba(255,255,255,0.75);}
+  .jg-panel-head input[readonly]{
+    background:rgba(255,255,255,0.08);
+    border-style:dashed;
+    cursor:default;
+    outline:none;
+  }
+  .jg-club-tag{
+    flex-shrink:0;
+    font-size:11px;
+    font-weight:700;
+    color:#fff;
+    background:rgba(255,255,255,0.18);
+    border-radius:999px;
+    padding:4px 10px;
+  }
+  .jg-roster-note{
+    padding:8px 14px;
+    font-size:11.5px;
+    line-height:1.4;
+    color:#7d7867;
+    background:#faf9f5;
+    border-bottom:1px solid var(--line);
+  }
+  .jg-namecell{display:flex; align-items:center; gap:6px; min-width:0;}
+  .jg-namecell input, .jg-namecell select{flex:1; min-width:0;}
+  .jg-row select{
+    border:1px solid var(--line);
+    border-radius:7px;
+    padding:7px 6px;
+    font-size:14px;
+    width:100%;
+    background:#fdfdfb;
+    color:var(--ink);
+    text-overflow:ellipsis;
+  }
+  .jg-row select.is-empty{color:#8b8676;}
+  .jg-row select:focus{outline:2px solid var(--gold); outline-offset:0; border-color:var(--gold);}
+  .jg-namecell-back{
+    flex-shrink:0;
+    width:34px;
+    height:34px;
+    border:1px solid var(--line);
+    border-radius:7px;
+    background:#fff;
+    color:var(--navy);
+    font-size:15px;
+    cursor:pointer;
+  }
 
   .jg-row{
     display:grid;
@@ -736,8 +784,18 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "1.5";
+  const APP_VERSION = "1.6";
   const CHANGELOG = [
+    {
+      version: "1.6", date: "19/09/2026",
+      changes: [
+        "Équipes du club : l'équipe 1 est désormais toujours « CAPA 1 » et l'équipe 2 toujours « CAPA 2 » (noms verrouillés). Les équipes 3 et 4 restent libres pour les équipes invitées.",
+        "Nouveau : pour CAPA 1 et CAPA 2, chaque joueur se choisit dans une liste déroulante alimentée par l'effectif CAPA FOOT U11 A 2026-27 (25 joueurs, ordre alphabétique).",
+        "Un joueur déjà placé dans CAPA 1 ou CAPA 2 est grisé dans les autres listes pour éviter les doublons. L'option « Autre joueur » permet une saisie libre (invité, joueur d'une autre catégorie).",
+        "L'import CSV reconnaît les joueurs de l'effectif (avec ou sans accents, nom et prénom dans n'importe quel ordre) et reprend l'orthographe de la liste des licences, pour que le suivi de progression reste cohérent.",
+        "Les anciens noms saisis à la main qui correspondent à un joueur de l'effectif sont alignés automatiquement sur l'orthographe officielle."
+      ]
+    },
     {
       version: "1.5", date: "16/09/2026",
       changes: [
@@ -819,6 +877,45 @@
     {main:[106,63,158], dark:[76,44,114], name:"ÉQUIPE 4"}
   ];
   const PLAYERS_PER_TEAM = 12;
+
+  // ---- Équipes du club + effectif (source : Licences — Effectif U11 A, saison 2026-27) ----
+  // Les équipes 1 et 2 sont toujours CAPA 1 et CAPA 2 et proposent une liste déroulante.
+  // Pour la saison suivante, il suffit de mettre à jour ROSTER_LABELS et la liste ROSTER ci-dessous.
+  const CLUB_TEAMS = ["CAPA 1", "CAPA 2"];
+  const ROSTER_LABELS = ["CAPA FOOT U11 A", "CAPA FOOT U11 B"]; // texte affiché sous le nom de chaque équipe du club
+  const ROSTER = [
+    "NICOLAS Thymeo", "VAUCHEL Mylann", "CONARD Valentin", "DELAUNE Maël", "DELAMARE Tylio",
+    "COSTENTIN Léo", "VASTEL Paul", "PAUL Marius", "MASSON Ethan", "MORDANT Tiago",
+    "VICOMTE Louise", "KROL Nohan", "LEVIEUX Jehan", "FLAMBARD Enaël", "MAINZEREL Tiago",
+    "MULLER Ugo", "TERNON Aodren", "AUBOUT Mathys", "FOUQUER Raphael", "AMNANOU Wanis",
+    "LEBRUN Thiago", "FILBIEN Robin", "DESHAYES Léon", "ESSOH Jonah", "FLAMENT LUBLIN Arthur"
+  ].sort(function(a, b){ return a.localeCompare(b, "fr"); });
+
+  function isClubTeam(i){ return i >= 0 && i < CLUB_TEAMS.length; }
+  function teamLabel(team, i){
+    return isClubTeam(i) ? CLUB_TEAMS[i] : ((team && team.name) || TEAM_COLORS[i].name);
+  }
+  // Clé de comparaison : sans accents, sans casse, mots triés (« Thymeo NICOLAS » = « NICOLAS Thymeo »).
+  function rosterKey(s){
+    return String(s == null ? "" : s)
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase().replace(/[^a-z0-9]+/g, " ").trim()
+      .split(" ").filter(Boolean).sort().join(" ");
+  }
+  const ROSTER_BY_KEY = {};
+  ROSTER.forEach(function(n){ ROSTER_BY_KEY[rosterKey(n)] = n; });
+  function canonicalRosterName(raw){
+    const k = rosterKey(raw);
+    return k ? (ROSTER_BY_KEY[k] || null) : null;
+  }
+  function normalizeSession(s){
+    if(s && Array.isArray(s.teams)){
+      s.teams.forEach(function(t, i){ if(t && isClubTeam(i)) t.name = CLUB_TEAMS[i]; });
+    }
+    return s;
+  }
+  // Lignes du panneau CAPA passées en « saisie libre » pendant la séance (non enregistré).
+  const customRows = new Set();
   const INDEX_KEY = "jonglerie:index";
   const SESSION_KEY_PREFIX = "jonglerie:session:";
 
@@ -973,9 +1070,9 @@
   }
 
   function defaultTeams(){
-    return TEAM_COLORS.map(function(t){
+    return TEAM_COLORS.map(function(t, i){
       return {
-        name: t.name,
+        name: isClubTeam(i) ? CLUB_TEAMS[i] : t.name,
         players: Array.from({length: PLAYERS_PER_TEAM}, function(){ return {name:"", score:""}; })
       };
     });
@@ -1038,7 +1135,7 @@
       const result = await storageAdapter.get(SESSION_KEY_PREFIX + id);
       if(result && result.value){
         const parsed = JSON.parse(result.value);
-        if(parsed && Array.isArray(parsed.teams)) return parsed;
+        if(parsed && Array.isArray(parsed.teams)) return normalizeSession(parsed);
       }
     }catch(e){ /* not found */ }
     return null;
@@ -1081,6 +1178,7 @@
     };
     sessionsIndex.unshift({ id: id, date: session.date, plateau: session.plateau, lieu: session.lieu, updatedAt: session.updatedAt });
     currentSession = session;
+    customRows.clear();
     activeTeam = 0;
     view = "editor";
     render();
@@ -1104,6 +1202,7 @@
       return;
     }
     currentSession = session;
+    customRows.clear();
     activeTeam = 0;
     view = "editor";
     render();
@@ -1589,7 +1688,7 @@
       const btn = document.createElement("button");
       btn.className = "jg-tab" + (i === activeTeam ? " active" : "");
       btn.dataset.team = i;
-      btn.textContent = team.name || TEAM_COLORS[i].name;
+      btn.textContent = teamLabel(team, i);
       btn.addEventListener("click", function(){
         activeTeam = i;
         renderTabs();
@@ -1599,7 +1698,106 @@
     });
   }
 
+  // Aligne les noms saisis à la main sur l'orthographe officielle (équipes du club uniquement).
+  function syncRosterNames(){
+    let changed = false;
+    currentSession.teams.forEach(function(t, i){
+      if(!isClubTeam(i)) return;
+      t.players.forEach(function(p){
+        const canon = canonicalRosterName(p.name);
+        if(canon && canon !== p.name){ p.name = canon; changed = true; }
+      });
+    });
+    return changed;
+  }
+
+  // Joueurs de l'effectif déjà placés dans CAPA 1 ou CAPA 2 pour cette séance.
+  function takenRosterKeys(){
+    const taken = new Set();
+    currentSession.teams.forEach(function(t, i){
+      if(!isClubTeam(i)) return;
+      t.players.forEach(function(p){
+        const k = canonicalRosterName(p.name) ? rosterKey(p.name) : null;
+        if(k) taken.add(k);
+      });
+    });
+    return taken;
+  }
+
+  function buildFreeNameField(player, placeholder){
+    const field = document.createElement("input");
+    field.type = "text";
+    field.placeholder = placeholder || "Nom du joueur";
+    field.value = player.name;
+    field.addEventListener("input", function(e){
+      player.name = e.target.value;
+      scheduleSaveSession();
+    });
+    return field;
+  }
+
+  function buildRosterCell(teamIdx, idx, player, taken){
+    const cell = document.createElement("div");
+    cell.className = "jg-namecell";
+    const key = currentSession.id + ":" + teamIdx + ":" + idx;
+    const hasName = (player.name || "").trim() !== "";
+    const custom = customRows.has(key) || (hasName && !canonicalRosterName(player.name));
+
+    if(custom){
+      cell.appendChild(buildFreeNameField(player, "Nom du joueur (invité)"));
+      const back = document.createElement("button");
+      back.type = "button";
+      back.className = "jg-namecell-back";
+      back.textContent = "☰";
+      back.title = "Choisir dans l'effectif";
+      back.setAttribute("aria-label", "Choisir dans l'effectif");
+      back.addEventListener("click", function(){
+        const current = (player.name || "").trim();
+        if(current && !confirm("Remplacer « " + current + " » par un joueur de l'effectif ?")) return;
+        customRows.delete(key);
+        player.name = "";
+        scheduleSaveSession();
+        renderPanel();
+      });
+      cell.appendChild(back);
+      return cell;
+    }
+
+    const sel = document.createElement("select");
+    sel.className = "jg-roster-select" + (hasName ? "" : " is-empty");
+    sel.setAttribute("aria-label", "Joueur n° " + (idx + 1));
+    sel.appendChild(new Option("Choisir un joueur…", ""));
+    ROSTER.forEach(function(nm){
+      const isOwn = nm === player.name;
+      const isTaken = !isOwn && taken.has(rosterKey(nm));
+      const opt = new Option(isTaken ? nm + " (déjà placé)" : nm, nm);
+      if(isTaken) opt.disabled = true;
+      sel.appendChild(opt);
+    });
+    sel.appendChild(new Option("✎ Autre joueur (saisie libre)…", "__custom__"));
+    sel.value = player.name || "";
+
+    sel.addEventListener("change", function(){
+      if(sel.value === "__custom__"){
+        customRows.add(key);
+        player.name = "";
+        scheduleSaveSession();
+        renderPanel();
+        const f = panelsEl.querySelector('.jg-row[data-slot="' + idx + '"] input[type="text"]');
+        if(f) f.focus();
+        return;
+      }
+      player.name = sel.value;
+      scheduleSaveSession();
+      renderPanel();
+    });
+    cell.appendChild(sel);
+    return cell;
+  }
+
   function renderPanel(){
+    const migrated = syncRosterNames();
+    const taken = takenRosterKeys();
     panelsEl.innerHTML = "";
     const team = currentSession.teams[activeTeam];
     const panel = document.createElement("div");
@@ -1608,17 +1806,37 @@
 
     const head = document.createElement("div");
     head.className = "jg-panel-head";
+    const clubTeam = isClubTeam(activeTeam);
     const nameInput = document.createElement("input");
     nameInput.type = "text";
-    nameInput.value = team.name;
+    nameInput.value = teamLabel(team, activeTeam);
     nameInput.placeholder = TEAM_COLORS[activeTeam].name;
-    nameInput.addEventListener("input", function(e){
-      team.name = e.target.value;
-      renderTabs();
-      scheduleSaveSession();
-    });
+    if(clubTeam){
+      nameInput.readOnly = true;
+      nameInput.tabIndex = -1;
+      nameInput.setAttribute("aria-label", "Nom de l'équipe du club (non modifiable)");
+    } else {
+      nameInput.addEventListener("input", function(e){
+        team.name = e.target.value;
+        renderTabs();
+        scheduleSaveSession();
+      });
+    }
     head.appendChild(nameInput);
+    if(clubTeam){
+      const tag = document.createElement("span");
+      tag.className = "jg-club-tag";
+      tag.textContent = "Équipe du club";
+      head.appendChild(tag);
+    }
     panel.appendChild(head);
+
+    if(clubTeam){
+      const note = document.createElement("div");
+      note.className = "jg-roster-note";
+      note.textContent = "Choisissez chaque joueur dans l'effectif " + ROSTER_LABELS[activeTeam];
+      panel.appendChild(note);
+    }
 
     const colLabels = document.createElement("div");
     colLabels.className = "col-labels";
@@ -1634,15 +1852,8 @@
       num.textContent = idx + 1;
       row.appendChild(num);
 
-      const nameField = document.createElement("input");
-      nameField.type = "text";
-      nameField.placeholder = "Nom du joueur";
-      nameField.value = player.name;
-      nameField.addEventListener("input", function(e){
-        player.name = e.target.value;
-        scheduleSaveSession();
-      });
-      row.appendChild(nameField);
+      row.dataset.slot = idx;
+      row.appendChild(clubTeam ? buildRosterCell(activeTeam, idx, player, taken) : buildFreeNameField(player));
 
       const scoreField = document.createElement("input");
       scoreField.type = "number";
@@ -1666,6 +1877,7 @@
     });
 
     panelsEl.appendChild(panel);
+    if(migrated) scheduleSaveSession();
   }
 
   backBtn.addEventListener("click", backToList);
@@ -1824,7 +2036,7 @@
       if(!proceed) return;
 
       const newTeams = defaultTeams();
-      currentSession.teams.forEach(function(t, i){ if(t.name && newTeams[i]) newTeams[i].name = t.name; });
+      currentSession.teams.forEach(function(t, i){ if(t.name && newTeams[i] && !isClubTeam(i)) newTeams[i].name = t.name; });
 
       function teamIndexFromRaw(raw){
         if(!raw) return null;
@@ -1854,12 +2066,13 @@
         }
         const slot = cursors[teamIdx];
         const scoreVal = (rec.scoreRaw !== "" && !isNaN(Number(rec.scoreRaw))) ? rec.scoreRaw : "";
-        newTeams[teamIdx].players[slot] = { name: rec.name, score: scoreVal };
+        newTeams[teamIdx].players[slot] = { name: canonicalRosterName(rec.name) || rec.name, score: scoreVal };
         cursors[teamIdx] = slot + 1;
         importedCount++;
       });
 
       currentSession.teams = newTeams;
+      customRows.clear();
       activeTeam = 0;
       renderTabs();
       renderPanel();
@@ -1919,6 +2132,7 @@
   document.getElementById("jgReset").addEventListener("click", function(){
     if(!confirm("Vider tous les scores et noms de joueurs de cette séance ?")) return;
     currentSession.teams = defaultTeams();
+    customRows.clear();
     activeTeam = 0;
     renderTabs();
     renderPanel();
@@ -2021,7 +2235,7 @@
         doc.setTextColor(255, 255, 255);
         doc.setFont("helvetica", "bold");
         doc.setFontSize(9);
-        doc.text((team.name || color.name).toUpperCase(), x + colW / 2, y + bannerH - 1.6, { align: "center" });
+        doc.text(teamLabel(team, i).toUpperCase(), x + colW / 2, y + bannerH - 1.6, { align: "center" });
 
         const tableAvailH = rowAreaH - bannerH;
         const headRowH = 5;
