@@ -25,7 +25,7 @@
     color:var(--ink);
     max-width:760px;
     margin:0 auto;
-    padding:0 0 32px 0;
+    padding:0 0 calc(84px + env(safe-area-inset-bottom, 0px)) 0;
   }
   .jg-hero{
     position:relative;
@@ -218,6 +218,21 @@
     font-size:15px;
     cursor:pointer;
   }
+  .jg-session-card .dup{
+    border:none;
+    background:#eef2fa;
+    color:var(--navy);
+    border-radius:8px;
+    width:34px;
+    height:34px;
+    flex-shrink:0;
+    cursor:pointer;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+  }
+  .jg-session-card .dup:focus-visible,
+  .jg-session-card .del:focus-visible{outline:2px solid var(--gold); outline-offset:2px;}
   .jg-empty{
     text-align:center;
     color:#9a9484;
@@ -304,6 +319,44 @@
     background:#faf9f5;
     border-bottom:1px solid var(--line);
   }
+  .jg-namewrap{min-width:0;}
+  .jg-hint{
+    font-size:11px;
+    line-height:1.3;
+    color:#8b8676;
+    margin:3px 2px 0 2px;
+  }
+  .jg-hint:empty{display:none;}
+  .jg-hint b{color:var(--navy);}
+  .jg-hint .rec b{color:#8a6410;}
+  .jg-bottomnav{
+    position:fixed;
+    left:0; right:0; bottom:0;
+    z-index:50;
+    background:#fff;
+    border-top:1px solid var(--line);
+    box-shadow:0 -2px 10px rgba(0,0,0,0.07);
+    padding-bottom:env(safe-area-inset-bottom, 0px);
+  }
+  .jg-bottomnav-inner{display:flex; max-width:760px; margin:0 auto;}
+  .jg-nav-btn{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:2px;
+    padding:8px 6px 7px 6px;
+    border:none;
+    border-top:3px solid transparent;
+    background:none;
+    font-size:11.5px;
+    font-weight:700;
+    color:#8b8676;
+    cursor:pointer;
+  }
+  .jg-nav-btn .ico{font-size:19px; line-height:1;}
+  .jg-nav-btn.active{color:var(--navy); border-top-color:var(--gold);}
+  .jg-nav-btn:focus-visible{outline:2px solid var(--gold); outline-offset:-3px;}
   .jg-namecell{display:flex; align-items:center; gap:6px; min-width:0;}
   .jg-namecell input, .jg-namecell select{flex:1; min-width:0;}
   .jg-row select{
@@ -684,6 +737,7 @@
      (le CSS ci-dessus est la base mobile-first)
      ══════════════════════════════════════════════ */
   @media (min-width:640px){
+    .jg-bottomnav-inner{ max-width:900px; }
     .jg-root{ max-width:900px; }
     .jg-list-wrap{ padding:20px 22px 0 22px; }
     #jgSessionList{
@@ -698,6 +752,7 @@
   }
 
   @media (min-width:1024px){
+    .jg-bottomnav-inner{ max-width:1100px; }
     .jg-root{ max-width:1100px; }
     #jgSessionList{ grid-template-columns:1fr 1fr 1fr; }
     .jg-kpi-grid{ grid-template-columns:repeat(4, 1fr); }
@@ -769,6 +824,13 @@
   </div>
 </div>
 
+<nav class="jg-bottomnav" id="jgBottomNav" aria-label="Navigation principale">
+  <div class="jg-bottomnav-inner">
+    <button type="button" class="jg-nav-btn active" id="jgNavList"><span class="ico" aria-hidden="true">📋</span><span>Séances</span></button>
+    <button type="button" class="jg-nav-btn" id="jgNavDash"><span class="ico" aria-hidden="true">📊</span><span>Tableau de bord</span></button>
+  </div>
+</nav>
+
 <div class="jg-modal-bg" id="jgChangelogModalBg">
   <div class="jg-modal">
     <button class="jg-modal-close" id="jgChangelogClose" title="Fermer">✕</button>
@@ -784,8 +846,17 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "1.6";
+  const APP_VERSION = "1.7";
   const CHANGELOG = [
+    {
+      version: "1.7", date: "19/09/2026",
+      changes: [
+        "Nouvelle barre de navigation fixe en bas de l'écran (Séances / Tableau de bord), accessible depuis la liste, le tableau de bord et l'édition d'une séance.",
+        "Nouveau bouton « Dupliquer » sur chaque séance : la copie reprend le lieu et les joueurs de chaque équipe, avec la date du jour et tous les scores remis à zéro.",
+        "En saisie, le dernier score et le record de chaque joueur (séances précédentes) s'affichent sous son nom.",
+        "Correction : quitter une séance moins d'une demi-seconde après une modification n'annule plus l'enregistrement."
+      ]
+    },
     {
       version: "1.6", date: "19/09/2026",
       changes: [
@@ -1095,6 +1166,8 @@
   let view = "list"; // "list" | "editor"
   let activeTeam = 0;
   let saveTimer = null;
+  let playerStats = new Map(); // clé de nom -> {last, lastDate, best, bestDate} sur les AUTRES séances
+  let panelHints = [];         // lignes du panneau actif : {el, player}
   let dashboardHistories = new Map(); // lowercase name -> {display, history:[{date,score}]}, refreshed each time the dashboard is opened
 
   const heroEl = document.getElementById("jgHero");
@@ -1142,19 +1215,21 @@
   }
 
   function scheduleSaveSession(){
+    const target = currentSession; // capturé : la séance reste enregistrée même si l'on quitte l'écran avant la fin du délai
+    if(!target) return;
     if(saveTimer) clearTimeout(saveTimer);
     statusEl.textContent = "Enregistrement...";
     saveTimer = setTimeout(async function(){
       try{
-        currentSession.updatedAt = Date.now();
-        await storageAdapter.set(SESSION_KEY_PREFIX + currentSession.id, JSON.stringify(currentSession));
-        pushSessionToFirestore(currentSession);
-        const idxEntry = sessionsIndex.find(function(s){ return s.id === currentSession.id; });
+        target.updatedAt = Date.now();
+        await storageAdapter.set(SESSION_KEY_PREFIX + target.id, JSON.stringify(target));
+        pushSessionToFirestore(target);
+        const idxEntry = sessionsIndex.find(function(s){ return s.id === target.id; });
         if(idxEntry){
-          idxEntry.date = currentSession.date;
-          idxEntry.plateau = currentSession.plateau;
-          idxEntry.lieu = currentSession.lieu;
-          idxEntry.updatedAt = currentSession.updatedAt;
+          idxEntry.date = target.date;
+          idxEntry.plateau = target.plateau;
+          idxEntry.lieu = target.lieu;
+          idxEntry.updatedAt = target.updatedAt;
         }
         await saveIndex();
         statusEl.textContent = "Enregistré ✓";
@@ -1167,21 +1242,54 @@
   }
 
   function createSession(){
-    const id = makeId();
-    const session = {
-      id: id,
+    startSession({
+      id: makeId(),
       date: todayISO(),
       plateau: "",
       lieu: "",
       updatedAt: Date.now(),
       teams: defaultTeams()
+    });
+  }
+
+  // Duplique une séance : mêmes lieu, plateau et joueurs, date du jour, scores remis à zéro.
+  async function duplicateSession(id, evt){
+    if(evt) evt.stopPropagation();
+    const base = await loadSession(id);
+    if(!base){
+      alert("Impossible de charger cette séance.");
+      return;
+    }
+    const copy = {
+      id: makeId(),
+      date: todayISO(),
+      plateau: base.plateau || "",
+      lieu: base.lieu || "",
+      updatedAt: Date.now(),
+      teams: defaultTeams().map(function(freshTeam, i){
+        const t = base.teams[i];
+        if(!t) return freshTeam;
+        const players = Array.from({length: PLAYERS_PER_TEAM}, function(_, k){
+          const p = (t.players && t.players[k]) || {};
+          return { name: p.name || "", score: "" };
+        });
+        return { name: isClubTeam(i) ? CLUB_TEAMS[i] : (t.name || freshTeam.name), players: players };
+      })
     };
+    startSession(copy);
+    showRecordToast("✅ Séance dupliquée : scores remis à zéro. Vérifiez la date et le plateau.");
+  }
+
+  function startSession(session){
+    const id = session.id;
     sessionsIndex.unshift({ id: id, date: session.date, plateau: session.plateau, lieu: session.lieu, updatedAt: session.updatedAt });
     currentSession = session;
     customRows.clear();
+    playerStats = new Map();
     activeTeam = 0;
     view = "editor";
     render();
+    refreshPlayerStats();
     // Persist in the background so the editor opens instantly even if storage is slow/unavailable.
     (async function(){
       try{
@@ -1203,9 +1311,11 @@
     }
     currentSession = session;
     customRows.clear();
+    playerStats = new Map();
     activeTeam = 0;
     view = "editor";
     render();
+    refreshPlayerStats();
   }
 
   function deleteSession(id, evt){
@@ -1232,6 +1342,8 @@
 
   // ---- Rendering ----
   function render(){
+    document.getElementById("jgNavList").classList.toggle("active", view !== "dashboard");
+    document.getElementById("jgNavDash").classList.toggle("active", view === "dashboard");
     if(view === "list"){
       backBtn.style.display = "none";
       titleEl.textContent = "MES SÉANCES";
@@ -1268,6 +1380,7 @@
 
   function openDashboard(){
     view = "dashboard";
+    currentSession = null;
     render();
   }
 
@@ -1646,11 +1759,21 @@
       meta.textContent = metaParts.join(" · ");
       info.appendChild(title);
       info.appendChild(meta);
+      const dup = document.createElement("button");
+      dup.type = "button";
+      dup.className = "dup";
+      dup.title = "Dupliquer cette séance";
+      dup.setAttribute("aria-label", "Dupliquer la séance");
+      dup.innerHTML = '<svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="11" height="11" rx="2"/><path d="M5 15V6a2 2 0 0 1 2-2h9"/></svg>';
+      dup.addEventListener("click", function(e){ duplicateSession(s.id, e); });
       const del = document.createElement("button");
       del.className = "del";
+      del.title = "Supprimer cette séance";
+      del.setAttribute("aria-label", "Supprimer la séance");
       del.textContent = "✕";
       del.addEventListener("click", function(e){ deleteSession(s.id, e); });
       card.appendChild(info);
+      card.appendChild(dup);
       card.appendChild(del);
       card.addEventListener("click", function(){ openSession(s.id); });
       sessionListEl.appendChild(card);
@@ -1722,6 +1845,66 @@
       });
     });
     return taken;
+  }
+
+  // Clé de rapprochement des noms (orthographe officielle si joueur de l'effectif, sinon minuscules).
+  function statKey(name){
+    const nm = String(name || "").trim();
+    if(!nm) return "";
+    return canonicalRosterName(nm) ? "r:" + rosterKey(nm) : "t:" + nm.toLowerCase();
+  }
+
+  // Calcule, pour chaque joueur, son dernier score et son record sur les autres séances.
+  async function refreshPlayerStats(){
+    const sid = currentSession ? currentSession.id : null;
+    if(!sid) return;
+    try{
+      const others = (await Promise.all(
+        sessionsIndex.filter(function(e){ return e.id !== sid; }).map(function(e){ return loadSession(e.id); })
+      )).filter(Boolean);
+      others.sort(function(a, b){
+        return (a.date || "").localeCompare(b.date || "") || ((a.updatedAt || 0) - (b.updatedAt || 0));
+      });
+      const map = new Map();
+      others.forEach(function(session){
+        session.teams.forEach(function(team){
+          team.players.forEach(function(p){
+            const key = statKey(p.name);
+            const num = Number(p.score);
+            if(!key || p.score === "" || p.score === undefined || p.score === null || isNaN(num)) return;
+            const st = map.get(key) || { last: null, lastDate: "", best: null, bestDate: "" };
+            st.last = num;
+            st.lastDate = session.date || "";
+            if(st.best === null || num > st.best){ st.best = num; st.bestDate = session.date || ""; }
+            map.set(key, st);
+          });
+        });
+      });
+      if(!currentSession || currentSession.id !== sid) return; // l'utilisateur a changé d'écran entre-temps
+      playerStats = map;
+      panelHints.forEach(function(h){ fillHint(h.el, h.player.name); });
+    }catch(e){
+      console.error("Player stats error:", e);
+    }
+  }
+
+  function fillHint(el, name){
+    el.textContent = "";
+    const st = playerStats.get(statKey(name));
+    if(!st) return;
+    function part(label, value, date, cls){
+      const span = document.createElement("span");
+      if(cls) span.className = cls;
+      if(date) span.title = "Séance du " + frDate(date);
+      span.appendChild(document.createTextNode(label + " "));
+      const b = document.createElement("b");
+      b.textContent = String(value);
+      span.appendChild(b);
+      return span;
+    }
+    el.appendChild(part("Dernier", st.last, st.lastDate));
+    el.appendChild(document.createTextNode(" · "));
+    el.appendChild(part("Record", st.best, st.bestDate, "rec"));
   }
 
   function buildFreeNameField(player, placeholder){
@@ -1799,6 +1982,7 @@
     const migrated = syncRosterNames();
     const taken = takenRosterKeys();
     panelsEl.innerHTML = "";
+    panelHints = [];
     const team = currentSession.teams[activeTeam];
     const panel = document.createElement("div");
     panel.className = "jg-panel";
@@ -1853,7 +2037,18 @@
       row.appendChild(num);
 
       row.dataset.slot = idx;
-      row.appendChild(clubTeam ? buildRosterCell(activeTeam, idx, player, taken) : buildFreeNameField(player));
+      const nameWrap = document.createElement("div");
+      nameWrap.className = "jg-namewrap";
+      const nameCell = clubTeam ? buildRosterCell(activeTeam, idx, player, taken) : buildFreeNameField(player);
+      nameWrap.appendChild(nameCell);
+      const hint = document.createElement("div");
+      hint.className = "jg-hint";
+      fillHint(hint, player.name);
+      panelHints.push({ el: hint, player: player });
+      nameWrap.appendChild(hint);
+      row.appendChild(nameWrap);
+      const freeInput = nameCell.tagName === "INPUT" ? nameCell : nameCell.querySelector('input[type="text"]');
+      if(freeInput) freeInput.addEventListener("change", function(){ fillHint(hint, player.name); });
 
       const scoreField = document.createElement("input");
       scoreField.type = "number";
@@ -1881,6 +2076,14 @@
   }
 
   backBtn.addEventListener("click", backToList);
+  document.getElementById("jgNavList").addEventListener("click", function(){
+    if(view !== "list") backToList();
+    window.scrollTo(0, 0);
+  });
+  document.getElementById("jgNavDash").addEventListener("click", function(){
+    if(view !== "dashboard") openDashboard();
+    window.scrollTo(0, 0);
+  });
   document.getElementById("jgNewSession").addEventListener("click", createSession);
   document.getElementById("jgDashboardBtn").addEventListener("click", openDashboard);
 
