@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>FootJongle — Défis U11</title>
+<title>FootJongle — U11</title>
 <style>
   :root{
     --navy:#0d2149;
@@ -704,7 +704,39 @@
     min-height:16px;
   }
 
-  /* ---- v1.7 : saisie rapide, absent, verrouillage, paliers ---- */
+  /* ---- v2.0 : écran de connexion + code de réouverture ---- */
+  .jg-gate{
+    position:fixed; inset:0; z-index:3000;
+    background:linear-gradient(160deg, var(--navy) 0%, var(--navy-deep) 100%);
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+  }
+  .jg-gate-card{
+    width:100%; max-width:360px;
+    background:#fff;
+    border-radius:16px;
+    padding:30px 24px 24px 24px;
+    text-align:center;
+    box-shadow:0 12px 40px rgba(0,0,0,0.35);
+  }
+  .jg-gate-logo{ width:68px; height:68px; object-fit:contain; margin-bottom:14px; }
+  .jg-gate-card h1{ margin:0 0 4px 0; font-size:21px; font-weight:800; color:var(--navy); letter-spacing:0.5px; }
+  .jg-gate-sub{ font-size:12.5px; color:#847f6f; margin-bottom:22px; }
+  .jg-gate-card form{ text-align:left; }
+  .jg-gate-card label{ display:block; font-size:11px; font-weight:800; color:#7d7767; text-transform:uppercase; letter-spacing:0.4px; margin-bottom:6px; }
+  .jg-gate-card input, .jg-pin-input{
+    width:100%; border:1.5px solid var(--line); border-radius:10px;
+    padding:12px 13px; font-size:15px; margin-bottom:12px; font-family:inherit;
+  }
+  .jg-gate-card input:focus, .jg-pin-input:focus{ outline:none; border-color:var(--gold); }
+  .jg-pin-input{ text-align:center; letter-spacing:3px; font-weight:800; }
+  .jg-gate-err{
+    background:#fbeeee; color:#a4453f; border-radius:8px;
+    padding:8px 10px; font-size:12.5px; font-weight:700;
+    margin-bottom:12px;
+  }
+  .jg-gate-card .jg-btn{ width:100%; }
+  #jgGateSubmit:disabled{ opacity:0.6; }
   .col-labels span:nth-child(3), .col-labels span:nth-child(4){text-align:center;}
   .jg-row.absent{background:#faf4f4;}
   .jg-row.absent .num{color:#c9a4a0;}
@@ -965,6 +997,21 @@
 </head>
 <body>
 
+<div class="jg-gate" id="jgGate" style="display:none;">
+  <div class="jg-gate-card">
+    <img class="jg-gate-logo" id="jgGateLogo" alt="Logo District de l'Eure FFF">
+    <h1>FOOTJONGLE</h1>
+    <div class="jg-gate-sub">Accès réservé aux éducateurs</div>
+    <form id="jgGateForm">
+      <label for="jgGatePwd">Mot de passe</label>
+      <input type="password" id="jgGatePwd" autocomplete="current-password" required>
+      <div class="jg-gate-err" id="jgGateErr" style="display:none;"></div>
+      <button type="submit" class="jg-btn primary" id="jgGateSubmit">Se connecter</button>
+    </form>
+  </div>
+</div>
+
+
 <div class="jg-root" id="jgRoot">
   <div class="jg-hero" id="jgHero">
     <button class="jg-back" id="jgBackBtn" style="display:none;">‹ Mes séances</button>
@@ -1008,6 +1055,19 @@
 
   <div id="jgEditorView" style="display:none;">
     <div class="jg-lockbar" id="jgLockBar"><span>🔒 Séance terminée : en lecture seule.</span><button type="button" id="jgReopenBtn">Rouvrir</button></div>
+
+    <div class="jg-modal-bg" id="jgPinModalBg">
+      <div class="jg-modal" style="max-width:320px;">
+        <button type="button" class="jg-modal-close" id="jgPinClose" title="Fermer">✕</button>
+        <h2>Rouvrir la séance</h2>
+        <div class="jg-modal-sub">Cette séance est terminée. Saisissez le code éducateur pour la rouvrir.</div>
+        <form id="jgPinForm">
+          <input type="password" id="jgPinInput" inputmode="numeric" autocomplete="off" placeholder="Code" class="jg-pin-input">
+          <div class="jg-gate-err" id="jgPinErr" style="display:none;"></div>
+          <button type="submit" class="jg-btn primary" style="width:100%;">Rouvrir</button>
+        </form>
+      </div>
+    </div>
     <div class="jg-tabs" id="jgTabs"></div>
     <div id="jgPanels"></div>
 
@@ -1042,6 +1102,7 @@
     <button type="button" class="jg-version-btn" id="jgFooterVersion">FootJongle v1.0</button>
     · © 2026 SM
     <div id="jgSyncBadge" style="margin-top:4px; font-size:10.5px; font-weight:700;"></div>
+    <button type="button" id="jgLogoutBtn" style="display:none; margin-top:6px; border:none; background:transparent; color:#a89b70; font-size:10.5px; font-weight:700; text-decoration:underline; cursor:pointer;">Se déconnecter</button>
   </div>
 </div>
 
@@ -1075,10 +1136,19 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "1.9";
+  const APP_VERSION = "2.0";
   const CHANGELOG = [
+    {
+      version: "2.0", date: "19/09/2026",
+      changes: [
+        "Connexion éducateurs : l'application demande désormais un mot de passe avant de charger les séances. Sans ce mot de passe, impossible de consulter ou de modifier quoi que ce soit, même en connaissant le lien vers l'application.",
+        "Rouvrir une séance terminée demande maintenant un code : un geste volontaire, séparé de la connexion, pour éviter qu'un joueur ou un parent ne rouvre une séance par erreur en manipulant le téléphone d'un éducateur.",
+        "Titre de l'onglet simplifié en « FootJongle — U11 »."
+      ]
+    },
     {
       version: "1.9", date: "19/09/2026",
       changes: [
@@ -1349,6 +1419,29 @@
     firestoreReady = true;
   }catch(e){
     console.error("Firebase init error:", e);
+  }
+
+  // ---- Connexion éducateurs (Firebase Authentication) ----
+  // Sans un compte valide, les règles de sécurité Firestore refusent toute
+  // lecture et toute écriture : c'est ce qui protège réellement les données,
+  // pas l'écran ci-dessous (qui n'est que la porte d'entrée).
+  //
+  // ACCESS_EMAIL est l'identifiant technique du compte partagé des éducateurs.
+  // 1) Remplacez la valeur ci-dessous par une adresse e-mail réelle que vous
+  //    consultez (utile si vous devez réinitialiser le mot de passe un jour).
+  // 2) Créez CE MÊME compte (adresse + mot de passe) dans la console Firebase :
+  //    Authentication > Users > Add user.
+  // 3) Activez le fournisseur "E-mail/Mot de passe" dans Authentication >
+  //    Sign-in method, s'il ne l'est pas déjà.
+  const ACCESS_EMAIL = "acces@votre-club.fr";
+
+  let auth = null;
+  let authReady = false;
+  try{
+    auth = firebase.auth();
+    authReady = true;
+  }catch(e){
+    console.error("Auth init error:", e);
   }
 
   function setSyncStatus(ok){
@@ -3051,13 +3144,49 @@
     openRecap(currentSession);
   }
 
-  function reopenSession(){
+  // Code demandé pour rouvrir une séance terminée : un frein volontaire contre
+  // un geste maladroit (un joueur ou un parent qui tapote l'écran d'un éducateur),
+  // pas une vraie protection contre un inconnu — celle-ci vient de la connexion
+  // éducateurs ci-dessus. À personnaliser librement.
+  const REOPEN_PIN = "2610";
+  const pinModalBg = document.getElementById("jgPinModalBg");
+  const pinFormEl = document.getElementById("jgPinForm");
+  const pinInputEl = document.getElementById("jgPinInput");
+  const pinErrEl = document.getElementById("jgPinErr");
+
+  function openPinModal(){
+    pinInputEl.value = "";
+    pinErrEl.style.display = "none";
+    pinModalBg.classList.add("open");
+    setTimeout(function(){ pinInputEl.focus(); }, 50);
+  }
+  function closePinModal(){ pinModalBg.classList.remove("open"); }
+  document.getElementById("jgPinClose").addEventListener("click", closePinModal);
+  pinModalBg.addEventListener("click", function(e){ if(e.target === this) closePinModal(); });
+  pinFormEl.addEventListener("submit", function(e){
+    e.preventDefault();
+    if(pinInputEl.value === REOPEN_PIN){
+      closePinModal();
+      doReopenSession();
+    }else{
+      pinErrEl.textContent = "Code incorrect.";
+      pinErrEl.style.display = "block";
+      pinInputEl.value = "";
+      pinInputEl.focus();
+    }
+  });
+
+  function doReopenSession(){
     if(!currentSession || !isLocked()) return;
-    if(!confirm("Rouvrir cette séance ? Les scores redeviendront modifiables.")) return;
     currentSession.closed = false;
     currentSession.closedAt = null;
     scheduleSaveSession();
     refreshEditorAfterLockChange();
+  }
+
+  function reopenSession(){
+    if(!currentSession || !isLocked()) return;
+    openPinModal();
   }
 
   document.getElementById("jgCloseBtn").addEventListener("click", function(){
@@ -3817,7 +3946,97 @@
     subscribeToFirestore();
   }
 
-  init();
+  // ---- Porte d'entrée : démarre l'appli seulement après connexion ----
+  const gateEl = document.getElementById("jgGate");
+  const gateFormEl = document.getElementById("jgGateForm");
+  const gatePwdEl = document.getElementById("jgGatePwd");
+  const gateErrEl = document.getElementById("jgGateErr");
+  const gateSubmitEl = document.getElementById("jgGateSubmit");
+  const logoutBtnEl = document.getElementById("jgLogoutBtn");
+
+  function showGateError(msg){
+    gateErrEl.textContent = msg;
+    gateErrEl.style.display = "block";
+  }
+  function clearGateError(){
+    gateErrEl.style.display = "none";
+    gateErrEl.textContent = "";
+  }
+  function showGate(){
+    document.getElementById("jgGateLogo").src = LOGO_DATA_URI;
+    gateEl.style.display = "flex";
+    document.getElementById("jgRoot").setAttribute("aria-hidden", "true");
+    logoutBtnEl.style.display = "none";
+    setTimeout(function(){ gatePwdEl.focus(); }, 50);
+  }
+  function hideGate(){
+    gateEl.style.display = "none";
+    document.getElementById("jgRoot").removeAttribute("aria-hidden");
+    if(authReady) logoutBtnEl.style.display = "inline";
+  }
+
+  // Les versions récentes des SDK Firebase renvoient le même code d'erreur
+  // ("identifiants invalides") que le mot de passe soit faux ou que le compte
+  // n'existe pas, pour ne pas révéler quelles adresses sont enregistrées.
+  function authErrorMessage(err){
+    const code = err && err.code;
+    if(code === "auth/operation-not-allowed") return "Connexion non configurée : contactez la personne qui gère l'application.";
+    if(code === "auth/network-request-failed") return "Impossible de contacter le serveur. Vérifiez votre connexion.";
+    if(code === "auth/too-many-requests") return "Trop de tentatives : réessayez dans quelques minutes.";
+    return "Mot de passe incorrect.";
+  }
+
+  let bootStarted = false;
+  function bootAppOnce(){
+    if(bootStarted) return;
+    bootStarted = true;
+    init();
+  }
+
+  if(gateFormEl){
+    gateFormEl.addEventListener("submit", function(e){
+      e.preventDefault();
+      clearGateError();
+      if(!authReady){ showGateError("Connexion indisponible pour le moment."); return; }
+      const pwd = gatePwdEl.value;
+      if(!pwd) return;
+      gateSubmitEl.disabled = true;
+      gateSubmitEl.textContent = "Connexion…";
+      auth.signInWithEmailAndPassword(ACCESS_EMAIL, pwd)
+        .catch(function(err){
+          console.error("Sign-in error:", err);
+          showGateError(authErrorMessage(err));
+        })
+        .finally(function(){
+          gateSubmitEl.disabled = false;
+          gateSubmitEl.textContent = "Se connecter";
+        });
+    });
+  }
+  if(logoutBtnEl){
+    logoutBtnEl.addEventListener("click", function(){
+      if(!authReady) return;
+      if(!confirm("Se déconnecter de cet appareil ?")) return;
+      auth.signOut();
+    });
+  }
+
+  if(authReady){
+    try{ auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); }catch(e){ /* ignore */ }
+    auth.onAuthStateChanged(function(user){
+      if(user){ hideGate(); bootAppOnce(); }
+      else{ showGate(); }
+    }, function(err){
+      console.error("Auth state error:", err);
+      showGate(); // en cas d'erreur du service, on affiche la connexion par sécurité
+    });
+  }else{
+    // Firebase injoignable (hors-ligne, script bloqué...) : on démarre quand même
+    // en mode local, comme avant l'ajout de la connexion, pour ne pas bloquer un
+    // éducateur déjà sur le terrain sans réseau. Les données déjà présentes sur
+    // cet appareil restent consultables ; la synchronisation reprendra au retour du réseau.
+    bootAppOnce();
+  }
 })();
 </script>
 
