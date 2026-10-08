@@ -1225,7 +1225,7 @@
   .jg-pen-keeper input{flex:1; min-width:0; border:1px solid var(--line); border-radius:7px; padding:7px 8px; font-size:14px; background:#fdfdfb;}
   .jg-pen-keeper input:focus{outline:2px solid var(--gold); outline-offset:0; border-color:var(--gold);}
 
-  /* ---- v3.2 : chrono de série avec son de lancement ---- */
+  /* ---- v3.3 : chrono de série avec son de lancement ---- */
   .jg-pen-chrono{display:flex; flex-direction:column; align-items:stretch; gap:10px; padding:14px 14px 12px; background:linear-gradient(180deg,#fff 0%,#f6f3e8 100%); border-bottom:1px solid var(--line);}
   .jg-pen-chrono .disp{text-align:center; font-weight:800; font-size:46px; line-height:1; color:var(--navy); font-variant-numeric:tabular-nums; letter-spacing:1px;}
   .jg-pen-chrono .disp small{font-size:16px; font-weight:700; color:#7d7767; margin-left:4px;}
@@ -1456,6 +1456,7 @@
     <button class="jg-modal-close" id="jgPenRecapClose" title="Fermer">✕</button>
     <h2>Bilan du défi pénalties</h2>
     <div class="jg-modal-sub" id="jgPenRecapSub"></div>
+    <div class="jg-modal-sub" id="jgPenSyncNote" style="font-weight:800;"></div>
     <div id="jgPenRecapBody"></div>
   </div>
 </div>
@@ -1484,11 +1485,12 @@
 <script src="https://www.gstatic.com/firebasejs/10.13.0/firebase-auth-compat.js"></script>
 <script>
 (function(){
-  const APP_VERSION = "3.2";
+  const APP_VERSION = "3.3";
   const CHANGELOG = [
     {
-      version: "3.2", date: "08/10/2026",
+      version: "3.3", date: "08/10/2026",
       changes: [
+        "Synchronisation : « Terminer le défi » (et « Rouvrir ») enregistre et synchronise immédiatement, sans attendre, avec un message de confirmation dans le bilan. Un défi ouvert sur un autre appareil se met à jour automatiquement (verrouillage compris) sans quitter l'écran.",
         "Gardiens : sur les onglets CAPA 1 / CAPA 2, nouveau bloc « Notre gardien » par série (gardien du club + compteurs Arrêts et Tirs reçus). Les arrêts alimentent le résumé de l'onglet, les statistiques (top gardiens, % d'arrêts), le bilan texte et le PDF. Le champ du dessus devient « Gardien adverse » (facultatif). Les statistiques ne comptent que les gardiens du club.",
         "Statistiques pénalties : « Défis enregistrés » ne compte plus que les défis où au moins un tir ou un temps est saisi (les fiches vides sont ignorées).",
         "Défi pénalties : chronomètre intégré à chaque série. Le gros bouton « Lancer la série » démarre le chrono immédiatement avec un coup de sifflet (à appuyer dès que le ballon touche le pied du 1er tireur) ; « Stop » au 1er contact de pied du 6e tireur enregistre le temps complet de la série, au centième. Bouton 🔊/🔇 pour couper le son, ↺ pour remettre à zéro ; la saisie manuelle du temps reste possible."
@@ -1982,6 +1984,35 @@
       if(view === "list") renderSessionList();
       if(view === "dashboard") renderDashboard();
       if(view === "pen-list") renderPenList();
+      if(view === "pen-editor" && penSession){
+        try{
+          const d = snapshot.docs.find(function(x){ return x.id === penSession.id; });
+          if(d && !d.metadata.hasPendingWrites){
+            const data = d.data() || {};
+            const rem = data.updatedAt || 0;
+            if(rem > (penSession.updatedAt || 0)){
+              const ae = document.activeElement;
+              const typing = !!(ae && ae.closest && ae.closest("#jgPenPanels") && /^(INPUT|SELECT|TEXTAREA)$/.test(ae.tagName));
+              const closedChanged = !!data.closed !== !!penSession.closed;
+              const busy = penDirty || !!penChrono || typing;
+              if(!busy || (closedChanged && !penDirty)){
+                penSession.closed = !!data.closed;
+                penSession.closedAt = data.closedAt || null;
+                penSession.updatedAt = rem;
+                if(!busy){
+                  penSession.teams = Array.isArray(data.teams) ? data.teams : penSession.teams;
+                  penSession.date = data.date || penSession.date;
+                  penSession.plateau = data.plateau || "";
+                  penSession.lieu = data.lieu || "";
+                }
+                penNormalize(penSession);
+                penUpdateLockUI();
+                penRefreshAfterLock();
+              }
+            }
+          }
+        }catch(e){ console.error("Pen live refresh error:", e); }
+      }
     }, function(err){
       console.error("Firestore listen error:", err);
       setSyncStatus(false);
@@ -4592,6 +4623,7 @@
   let penSession = null;
   let penActiveTeam = 0;
   let penSaveTimer = null;
+  let penDirty = false; // modification locale pas encore enregistrée
   const penCustomRows = new Set();
 
   function penIndexKey(){
@@ -4749,11 +4781,13 @@
   }
 
   function penScheduleSave(){
+    penDirty = true;
     if(penSaveTimer) clearTimeout(penSaveTimer);
     const st = document.getElementById("jgPenStatus");
     if(st) st.textContent = "Enregistrement...";
     const sess = penSession;
     penSaveTimer = setTimeout(async function(){
+      penDirty = false;
       if(!sess) return;
       try{
         sess.updatedAt = Date.now();
@@ -5486,7 +5520,7 @@
     penChronoPaint();
   }
 
-  // ---- v3.2 : chrono avec son de lancement ----
+  // ---- v3.3 : chrono avec son de lancement ----
     let penAudio = null;
   let penMuted = false;
   try{ penMuted = localStorage.getItem("jgPenMuted") === "1"; }catch(e){}
@@ -5632,6 +5666,42 @@
     penRenderPanel();
     penUpdateLockUI();
   }
+  // Enregistrement immédiat (sans délai) + synchronisation Firestore avec retour visible
+  async function penFlushSave(){
+    const sess = penSession;
+    if(!sess) return;
+    if(penSaveTimer){ clearTimeout(penSaveTimer); penSaveTimer = null; }
+    penDirty = false;
+    function say(msg){
+      const a = document.getElementById("jgPenStatus"); if(a) a.textContent = msg;
+      const b = document.getElementById("jgPenSyncNote"); if(b) b.textContent = msg;
+    }
+    say("⏳ Synchronisation…");
+    try{
+      sess.updatedAt = Date.now();
+      await storageAdapter.set(sessionKey(sess.id), JSON.stringify(sess));
+      const e = penaltyIndex.find(function(x){ return x.id === sess.id; });
+      if(e) Object.assign(e, penEntry(sess));
+      await savePenIndex();
+      const res = await Promise.race([
+        pushSessionToFirestore(sess),
+        new Promise(function(r){ setTimeout(function(){ r({ timeout: true }); }, 5000); })
+      ]);
+      if(res && res.timeout){
+        say("📴 Enregistré sur cet appareil. Synchronisation dès le retour du réseau.");
+      }else if(res && res.ok && res.local){
+        say("💾 Enregistré sur cet appareil (mode local).");
+      }else if(res && res.ok){
+        say("✅ Synchronisé avec les autres éducateurs.");
+        setSyncStatus(true);
+      }else{
+        say("⚠️ Enregistré sur cet appareil, mais la synchronisation a échoué. Réessayez en appuyant sur « Rouvrir » puis « Terminer ».");
+      }
+    }catch(err){
+      console.error("Pen flush error:", err);
+      say("⚠️ Erreur d'enregistrement.");
+    }
+  }
   function penClose(){
     if(!penSession || penIsLocked()) return;
     let missing = 0;
@@ -5648,16 +5718,16 @@
     if(document.activeElement && document.activeElement.blur) document.activeElement.blur();
     penSession.closed = true;
     penSession.closedAt = Date.now();
-    penScheduleSave();
     penRefreshAfterLock();
     penOpenRecap();
+    penFlushSave();
   }
   function penDoReopen(){
     if(!penSession || !penIsLocked()) return;
     penSession.closed = false;
     penSession.closedAt = null;
-    penScheduleSave();
     penRefreshAfterLock();
+    penFlushSave();
   }
   function penReopen(){
     if(!penSession || !penIsLocked()) return;
