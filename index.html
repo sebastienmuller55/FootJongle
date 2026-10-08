@@ -1252,6 +1252,13 @@
   .jg-pen-chrono .tools{display:flex; justify-content:center; gap:10px;}
   .jg-chr-btn{border:1px solid var(--line); background:#fff; color:var(--navy); border-radius:9px; min-height:38px; padding:0 14px; font-size:12.5px; font-weight:800; cursor:pointer; white-space:nowrap;}
   .jg-chr-btn:disabled{opacity:.5; cursor:default;}
+  .jg-pen-gk-steps{display:flex; gap:10px; padding:8px 12px 10px; background:#fff; border-bottom:1px solid var(--line);}
+  .jg-pen-gk-steps .st{flex:1; display:flex; align-items:center; justify-content:space-between; gap:6px; border:1px solid var(--line); border-radius:10px; padding:4px 6px 4px 10px; background:#fdfdfb;}
+  .jg-pen-gk-steps .st span.l{font-size:11.5px; font-weight:800; color:var(--navy); line-height:1.15;}
+  .jg-pen-gk-steps .st b{min-width:22px; text-align:center; font-size:20px; font-weight:900; color:var(--navy); font-variant-numeric:tabular-nums;}
+  .jg-pen-gk-steps .st button{width:40px; height:40px; border-radius:9px; border:1px solid var(--line); background:#fff; color:var(--navy); font-size:20px; font-weight:900; cursor:pointer; line-height:1;}
+  .jg-pen-gk-steps .st button.plus{background:#2f7d3c; border-color:#2f7d3c; color:#fff;}
+  .jg-pen-gk-steps .st button:disabled{opacity:.45; cursor:default;}
 </style>
 </head>
 <body>
@@ -1482,6 +1489,7 @@
     {
       version: "3.2", date: "08/10/2026",
       changes: [
+        "Gardiens : sur les onglets CAPA 1 / CAPA 2, nouveau bloc « Notre gardien » par série (gardien du club + compteurs Arrêts et Tirs reçus). Les arrêts alimentent le résumé de l'onglet, les statistiques (top gardiens, % d'arrêts), le bilan texte et le PDF. Le champ du dessus devient « Gardien adverse » (facultatif). Les statistiques ne comptent que les gardiens du club.",
         "Statistiques pénalties : « Défis enregistrés » ne compte plus que les défis où au moins un tir ou un temps est saisi (les fiches vides sont ignorées).",
         "Défi pénalties : chronomètre intégré à chaque série. Le gros bouton « Lancer la série » démarre le chrono immédiatement avec un coup de sifflet (à appuyer dès que le ballon touche le pied du 1er tireur) ; « Stop » au 1er contact de pied du 6e tireur enregistre le temps complet de la série, au centième. Bouton 🔊/🔇 pour couper le son, ↺ pour remettre à zéro ; la saisie manuelle du temps reste possible."
       ]
@@ -4613,6 +4621,9 @@
           return {
             time: "",
             keeper: "",
+            gkName: "",
+            gkSaves: 0,
+            gkFaced: 0,
             shooters: Array.from({ length: PEN_SHOOTERS }, function(){ return { name: "", result: "" }; })
           };
         })
@@ -4634,6 +4645,9 @@
         const se = t.series[k];
         if(se.time === undefined || se.time === null) se.time = "";
         if(typeof se.keeper !== "string") se.keeper = "";
+        if(typeof se.gkName !== "string") se.gkName = "";
+        se.gkSaves = Math.max(0, parseInt(se.gkSaves, 10) || 0);
+        se.gkFaced = Math.max(0, parseInt(se.gkFaced, 10) || 0);
         if(!Array.isArray(se.shooters)) se.shooters = [];
         while(se.shooters.length < PEN_SHOOTERS) se.shooters.push({ name: "", result: "" });
       }
@@ -4676,7 +4690,8 @@
       const g = penGoals(se);
       const sv = penSaves(se);
       goals += g; shots += n; saves += sv;
-      return { g: g, n: n, saves: sv, time: penTime(se), keeper: (se.keeper || "").trim() };
+      return { g: g, n: n, saves: sv, time: penTime(se), keeper: (se.keeper || "").trim(),
+               gkName: (se.gkName || "").trim(), gkSaves: se.gkSaves || 0, gkFaced: se.gkFaced || 0 };
     });
     return { goals: goals, shots: shots, saves: saves, series: series };
   }
@@ -4904,9 +4919,16 @@
           const g = penGoals(se);
           const tm = penTime(se);
           shots += sh.length; goals += g;
-          totalSaves += penSaves(se);
+          if(ti >= 2) totalSaves += penSaves(se);
+          if(ti < 2 && (se.gkName || "").trim() && se.gkFaced > 0){
+            totalSaves += se.gkSaves;
+            const gn = se.gkName.trim(), gkk = pkey(gn);
+            let ge = keepers.get(gkk);
+            if(!ge){ ge = { display: gn, faced: 0, saves: 0, conceded: 0 }; keepers.set(gkk, ge); }
+            ge.faced += se.gkFaced; ge.saves += se.gkSaves; ge.conceded += (se.gkFaced - se.gkSaves);
+          }
           const kn = (se.keeper || "").trim();
-          if(kn && sh.length > 0){
+          if(ti >= 2 && kn && sh.length > 0){
             const kk = pkey(kn);
             let ke = keepers.get(kk);
             if(!ke){ ke = { display: kn, faced: 0, saves: 0, conceded: 0 }; keepers.set(kk, ke); }
@@ -4955,7 +4977,7 @@
       "Série la plus rapide",
       fastest ? (fastest.team + " · " + fastest.g + "/" + fastest.n + " · " + frDate(fastest.date)) : "Aucun chrono saisi"
     ));
-    cards.push(kpiCard(totalSaves, "Arrêts du gardien", keepers.size + " gardien(s) suivi(s)"));
+    cards.push(kpiCard(totalSaves, "Arrêts de nos gardiens", keepers.size + " gardien(s) suivi(s)"));
     ["CAPA 1", "CAPA 2"].forEach(function(lbl, i){
       cards.push(kpiCard(
         club[i].shots > 0 ? Math.round(club[i].goals / club[i].shots * 100) + '<span class="unit">%</span>' : "–",
@@ -5190,6 +5212,9 @@
       let h = '<div>Total : <b>' + sm.goals + ' but' + (sm.goals > 1 ? 's' : '') + '</b> sur ' + sm.shots + ' tir' + (sm.shots > 1 ? 's' : '') + (sm.saves ? ' · 🧤 ' + sm.saves + ' arrêt' + (sm.saves > 1 ? 's' : '') : '') + '</div>';
       sm.series.forEach(function(x, k){
         h += '<div style="font-weight:600;color:#7d7767;">Série ' + (k + 1) + ' : ' + x.g + ' / ' + x.n + (x.time !== null ? ' · ⏱ ' + fmtTime(x.time) : '') + (x.keeper ? ' · 🧤 ' + escapeHtml(x.keeper) + ' (' + x.saves + ' arrêt' + (x.saves > 1 ? 's' : '') + ')' : '') + '</div>';
+        if(x.gkName && x.gkFaced > 0){
+          h += '<div style="font-weight:600;color:#7d7767;">Série ' + (k + 1) + ' · notre gardien 🧤 ' + escapeHtml(x.gkName) + ' : ' + x.gkSaves + ' arrêt' + (x.gkSaves > 1 ? 's' : '') + ' sur ' + x.gkFaced + ' tir' + (x.gkFaced > 1 ? 's' : '') + '</div>';
+        }
       });
       sum.innerHTML = h;
     }
@@ -5314,13 +5339,13 @@
       const kw = document.createElement("div");
       kw.className = "jg-pen-keeper";
       const kl = document.createElement("span");
-      kl.textContent = "🧤 Gardien";
+      kl.textContent = clubTeam ? "🧤 Gardien adverse" : "🧤 Notre gardien";
       const ki = document.createElement("input");
       ki.type = "text";
-      ki.setAttribute("list", "jgPenKeeperList");
+      if(!clubTeam) ki.setAttribute("list", "jgPenKeeperList");
       ki.setAttribute("autocomplete", "off");
-      ki.setAttribute("aria-label", "Gardien face à la série " + (si + 1));
-      ki.placeholder = "Gardien qui défend cette série";
+      ki.setAttribute("aria-label", (clubTeam ? "Gardien adverse" : "Gardien du club") + " face à la série " + (si + 1));
+      ki.placeholder = clubTeam ? "Gardien adverse (facultatif)" : "Gardien du club qui défend ces tirs";
       ki.value = se.keeper || "";
       ki.addEventListener("input", function(e){
         se.keeper = e.target.value;
@@ -5328,6 +5353,62 @@
       });
       kw.appendChild(kl); kw.appendChild(ki);
       panel.appendChild(kw);
+
+      if(clubTeam){
+        const gk = document.createElement("div");
+        gk.className = "jg-pen-keeper";
+        gk.style.borderTop = "1px solid var(--line)";
+        const gl = document.createElement("span");
+        gl.textContent = "🧤 Notre gardien";
+        const gi = document.createElement("input");
+        gi.type = "text";
+        gi.setAttribute("list", "jgPenKeeperList");
+        gi.setAttribute("autocomplete", "off");
+        gi.setAttribute("aria-label", "Notre gardien face à l'équipe adverse, série " + (si + 1));
+        gi.placeholder = "Gardien du club qui défend face à l'adversaire";
+        gi.value = se.gkName || "";
+        gk.appendChild(gl); gk.appendChild(gi);
+        panel.appendChild(gk);
+
+        const steps = document.createElement("div");
+        steps.className = "jg-pen-gk-steps";
+        function stepper(label, get, set){
+          const box = document.createElement("div");
+          box.className = "st";
+          const l = document.createElement("span"); l.className = "l"; l.textContent = label;
+          const minus = document.createElement("button"); minus.type = "button"; minus.textContent = "−"; minus.setAttribute("aria-label", "Moins : " + label);
+          const val = document.createElement("b");
+          const plus = document.createElement("button"); plus.type = "button"; plus.className = "plus"; plus.textContent = "+"; plus.setAttribute("aria-label", "Plus : " + label);
+          minus.addEventListener("click", function(){ set(get() - 1); });
+          plus.addEventListener("click", function(){ set(get() + 1); });
+          box.appendChild(l); box.appendChild(minus); box.appendChild(val); box.appendChild(plus);
+          return { box: box, val: val };
+        }
+        function clampGk(){
+          se.gkFaced = Math.max(0, Math.min(12, se.gkFaced || 0));
+          se.gkSaves = Math.max(0, Math.min(se.gkFaced, se.gkSaves || 0));
+        }
+        const stSaves = stepper("🧤 Arrêts", function(){ return se.gkSaves || 0; }, function(v){
+          se.gkSaves = v;
+          if(se.gkSaves > (se.gkFaced || 0)) se.gkFaced = se.gkSaves;
+          clampGk(); paintGk(); refreshAll(); penScheduleSave();
+        });
+        const stFaced = stepper("Tirs reçus", function(){ return se.gkFaced || 0; }, function(v){
+          se.gkFaced = v; clampGk(); paintGk(); refreshAll(); penScheduleSave();
+        });
+        function paintGk(){
+          stSaves.val.textContent = se.gkSaves || 0;
+          stFaced.val.textContent = se.gkFaced || 0;
+        }
+        gi.addEventListener("input", function(e){
+          se.gkName = e.target.value;
+          if(se.gkName.trim() && !se.gkFaced){ se.gkFaced = PEN_SHOOTERS; paintGk(); }
+          refreshAll(); penScheduleSave();
+        });
+        paintGk();
+        steps.appendChild(stSaves.box); steps.appendChild(stFaced.box);
+        panel.appendChild(steps);
+      }
 
       const labels = document.createElement("div");
       labels.className = "col-labels";
@@ -5390,7 +5471,9 @@
 
     const note2 = document.createElement("div");
     note2.className = "jg-pen-note";
-    note2.textContent = "Gardien : renseignez celui qui défend la série (effectif ou saisie libre) ; « Arrêt » = tir arrêté, compté pour le gardien. Moins de 12 joueurs : le ou les plus jeunes tirent 2 fois (1 fois dans chaque série) — sélectionnez-les dans les deux séries.";
+    note2.textContent = clubTeam
+      ? "Gardien adverse : facultatif. Les arrêts de VOS gardiens se saisissent dans l'onglet de l'équipe adverse (bouton « Arrêt » sur chaque tir arrêté). Moins de 12 joueurs : le ou les plus jeunes tirent 2 fois (1 fois dans chaque série) — sélectionnez-les dans les deux séries."
+      : "Notre gardien : choisissez dans l'effectif celui qui défend la série ; « Arrêt » = tir arrêté, compté pour lui dans les statistiques. Moins de 12 joueurs : le ou les plus jeunes tirent 2 fois (1 fois dans chaque série).";
     panel.appendChild(note2);
     panel.appendChild(sum);
     refreshAll();
@@ -5608,6 +5691,7 @@
       L.push("🏅 " + teamLabel(t, i) + " — " + sm.goals + "/" + sm.shots + " buts");
       sm.series.forEach(function(x, k){
         if(x.n > 0 || x.time !== null) L.push("Série " + (k + 1) + " : " + x.g + "/" + x.n + (x.time !== null ? " en " + fmtTime(x.time) : "") + (x.keeper ? " · 🧤 " + dn(x.keeper, short) + " (" + x.saves + " arrêt" + (x.saves > 1 ? "s" : "") + ")" : ""));
+        if(x.gkName && x.gkFaced > 0) L.push("Série " + (k + 1) + " · notre gardien 🧤 " + dn(x.gkName, short) + " : " + x.gkSaves + " arrêt" + (x.gkSaves > 1 ? "s" : "") + " sur " + x.gkFaced);
       });
       const counts = new Map();
       t.series.forEach(function(se){
@@ -5751,12 +5835,19 @@
           });
           body.push(row);
         }
-        const totals = ["Total"], times = ["Chrono"], kps = ["Gardien"];
+        const totals = ["Total"], times = ["Chrono"], kps = ["Gardien"], gks = ["Notre gardien"];
         sm.series.forEach(function(x, k){
           totals.push({ content: x.n > 0 ? x.g + " / " + x.n : "–", colSpan: 2 });
           times.push({ content: x.time !== null ? fmtTime(x.time) : "–", colSpan: 2 });
+          gks.push({ content: (x.gkName && x.gkFaced > 0) ? x.gkName + " (" + x.gkSaves + " arrêt" + (x.gkSaves > 1 ? "s" : "") + " / " + x.gkFaced + " tirs)" : "–", colSpan: 2 });
           kps.push({ content: x.keeper ? x.keeper + " (" + x.saves + " arrêt" + (x.saves > 1 ? "s" : "") + ")" : "–", colSpan: 2 });
-          if(x.keeper && x.n > 0){
+          if(i < 2 && x.gkName && x.gkFaced > 0){
+            const gk2 = pkey(x.gkName);
+            let ge2 = keepers.get(gk2);
+            if(!ge2){ ge2 = { name: x.gkName, faced: 0, saves: 0, conceded: 0 }; keepers.set(gk2, ge2); }
+            ge2.faced += x.gkFaced; ge2.saves += x.gkSaves; ge2.conceded += (x.gkFaced - x.gkSaves);
+          }
+          if(i >= 2 && x.keeper && x.n > 0){
             const kk = pkey(x.keeper);
             let ke = keepers.get(kk);
             if(!ke){ ke = { name: x.keeper, faced: 0, saves: 0, conceded: 0 }; keepers.set(kk, ke); }
@@ -5764,6 +5855,7 @@
           }
         });
         body.push(totals, times, kps);
+        if(i < 2 && sm.series.some(function(x){ return x.gkName && x.gkFaced > 0; })) body.push(gks);
 
         doc.autoTable({
           head: [[ "N°", "Série 1 · Tireur", "Résultat", "Série 2 · Tireur", "Résultat" ]],
