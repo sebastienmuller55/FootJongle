@@ -1482,6 +1482,7 @@
     {
       version: "3.2", date: "08/10/2026",
       changes: [
+        "Statistiques pénalties : « Défis enregistrés » ne compte plus que les défis où au moins un tir ou un temps est saisi (les fiches vides sont ignorées).",
         "Défi pénalties : chronomètre intégré à chaque série. Le gros bouton « Lancer la série » démarre le chrono immédiatement avec un coup de sifflet (à appuyer dès que le ballon touche le pied du 1er tireur) ; « Stop » au 1er contact de pied du 6e tireur enregistre le temps complet de la série, au centième. Bouton 🔊/🔇 pour couper le son, ↺ pour remettre à zéro ; la saisie manuelle du temps reste possible."
       ]
     },
@@ -4935,7 +4936,13 @@
 
     const rate = shots > 0 ? Math.round(goals / shots * 100) : null;
     const cards = [];
-    cards.push(kpiCard(all.length, "Défis enregistrés", ""));
+    // Un défi compte seulement si au moins un tir ou un temps y est saisi (les fiches vides sont ignorées)
+    const filled = all.filter(function(s){
+      return s.teams.some(function(t){
+        return t.series.some(function(se){ return penShots(se).length > 0 || penTime(se) !== null; });
+      });
+    }).length;
+    cards.push(kpiCard(filled, "Défis enregistrés", ""));
     cards.push(kpiCard(shots, "Tirs saisis", goals + " but(s)"));
     cards.push(kpiCard(rate !== null ? rate + '<span class="unit">%</span>' : "–", "Réussite", ""));
     cards.push(kpiCard(
